@@ -1,7 +1,7 @@
-import type { Book, BookState } from "./types";
+import type { Author, Book, BookState, Quote, Summary } from "./types";
 
 const DB_NAME = "kurdish-library";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -12,6 +12,9 @@ function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains("files")) db.createObjectStore("files");
       if (!db.objectStoreNames.contains("progress")) db.createObjectStore("progress");
       if (!db.objectStoreNames.contains("states")) db.createObjectStore("states");
+      if (!db.objectStoreNames.contains("summaries")) db.createObjectStore("summaries", { keyPath: "id" });
+      if (!db.objectStoreNames.contains("quotes")) db.createObjectStore("quotes", { keyPath: "id" });
+      if (!db.objectStoreNames.contains("authors")) db.createObjectStore("authors", { keyPath: "id" });
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -83,3 +86,34 @@ export async function saveProgress(id: string, value: number) {
 export async function getProgress(id: string): Promise<number> {
   return (await getBookState(id)).progress;
 }
+
+async function getAll<T>(storeName: string): Promise<T[]> {
+  const db = await openDb();
+  const items = await new Promise<T[]>((resolve, reject) => {
+    const request = db.transaction(storeName).objectStore(storeName).getAll();
+    request.onsuccess = () => resolve(request.result as T[]);
+    request.onerror = () => reject(request.error);
+  });
+  db.close();
+  return items;
+}
+
+async function putAll<T>(storeName: string, items: T[]) {
+  if (!items.length) return;
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
+    for (const item of items) store.put(item);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}
+
+export async function getSummaries(): Promise<Summary[]> { return getAll<Summary>("summaries"); }
+export async function saveSummaries(items: Summary[]) { return putAll("summaries", items); }
+export async function getQuotes(): Promise<Quote[]> { return getAll<Quote>("quotes"); }
+export async function saveQuotes(items: Quote[]) { return putAll("quotes", items); }
+export async function getAuthors(): Promise<Author[]> { return getAll<Author>("authors"); }
+export async function saveAuthors(items: Author[]) { return putAll("authors", items); }
