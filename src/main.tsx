@@ -3,8 +3,8 @@ import { createRoot } from "react-dom/client";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import ePub from "epubjs";
-import type { Book, Quote, Summary, Author, Highlight } from "./types";
-import { getBookFile, getBookState, getBooks, getSummaries, getQuotes, getAuthors, saveBook, saveBookState, saveProgress, saveSummaries, saveQuotes, saveAuthors, getExtractedText, saveExtractedText, getHighlights, saveHighlight, deleteHighlight } from "./storage";
+import type { Book, Quote, Summary, Author, Highlight, Note } from "./types";
+import { getBookFile, getBookState, getBooks, getSummaries, getQuotes, getAuthors, saveBook, saveBookState, saveProgress, saveSummaries, saveQuotes, saveAuthors, getExtractedText, saveExtractedText, getHighlights, saveHighlight, deleteHighlight, getNotes, saveNote, deleteNote } from "./storage";
 import "./styles.css";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
@@ -33,6 +33,9 @@ function App(){
   const [tab,setTab]=useState<"home"|"library"|"summaries"|"quotes"|"favorites"|"media">("home");
   const [viewMode,setViewMode]=useState<"grid"|"shelf"|"list"|"small">("grid");
   const [notebookOpen,setNotebookOpen]=useState(false);
+  const [notes,setNotes]=useState<Note[]>([]);
+  const [noteSearch,setNoteSearch]=useState("");
+  const [noteBookId,setNoteBookId]=useState("all");
   const [noteDraft,setNoteDraft]=useState("");
   const [noteTitle,setNoteTitle]=useState("");
   const [notebookFilter,setNotebookFilter]=useState("");
@@ -45,6 +48,7 @@ function App(){
   const [highlights,setHighlights]=useState<Highlight[]>([]);
   
 
+  useEffect(()=>{getNotes().then(setNotes).catch(()=>{});},[]);
   useEffect(()=>{ getBooks().then(saved=>{ if(saved.length) setBooks(saved); }); getSummaries().then(setSummaries); getQuotes().then(setQuotes); getAuthors().then(setAuthors); },[]);
   useEffect(()=>{ books.forEach(b=>{ if(!extractedText[b.id]) getExtractedText(b.id).then(t=>{if(t)setExtractedText(x=>({...x,[b.id]:t}))}); }); },[books]);
   useEffect(()=>{ if(!notice)return; const t=setTimeout(()=>setNotice(""),2200); return()=>clearTimeout(t); },[notice]);
