@@ -9,7 +9,7 @@ import bundledBooks from "./data/library.json";
 import bundledSummaries from "./data/summaries.json";
 import bundledQuotes from "./data/quotes.json";
 import bundledAuthors from "./data/authors.json";
-import { getBookFile, getBookState, getBooks, getSummaries, getQuotes, getAuthors, saveBook, saveBookState, saveProgress, saveSummaries, saveQuotes, saveAuthors, getExtractedText, saveExtractedText, getHighlights, saveHighlight, deleteHighlight, getNotes, saveNote, deleteNote } from "./storage";
+import { getBookFile, getBookState, getBooks, getSummaries, getQuotes, getAuthors, saveBook, saveBookState, saveProgress, saveSummaries, saveQuotes, saveAuthors, getExtractedText, saveExtractedText, searchExtractedText, getHighlights, saveHighlight, deleteHighlight, getNotes, saveNote, deleteNote } from "./storage";
 import "./styles.css";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
@@ -54,6 +54,7 @@ function App(){
   const [ocrBusy,setOcrBusy]=useState(false);
   const [highlights,setHighlights]=useState<Highlight[]>([]);
   const [readerJump,setReaderJump]=useState<number|undefined>(undefined);
+  const [textMatches,setTextMatches]=useState<Set<string>>(new Set());
   
 
   async function persistNote(note: Note){
@@ -73,7 +74,13 @@ function App(){
 
   useEffect(()=>{getNotes().then(setNotes).catch(()=>{}); getHighlights().then(setHighlights).catch(()=>{});},[]);
   useEffect(()=>{\n    const bb=(bundledBooks as Book[]); const bs=(bundledSummaries as Summary[]); const bq=(bundledQuotes as Quote[]); const ba=(bundledAuthors as Author[]);\n    setBooks(prev=>prev.length>3?prev:[...bb,...prev]); setSummaries(bs); setQuotes(bq); setAuthors(ba);\n    getBooks().then(saved=>{ if(saved.length) setBooks(saved); }); getSummaries().then(saved=>{if(saved.length)setSummaries(saved);}); getQuotes().then(saved=>{if(saved.length)setQuotes(saved);}); getAuthors().then(saved=>{if(saved.length)setAuthors(saved);});\n  },[]);
-  useEffect(()=>{ books.forEach(b=>{ if(!extractedText[b.id]) getExtractedText(b.id).then(t=>{if(t)setExtractedText(x=>({...x,[b.id]:t}))}); }); },[books]);
+  useEffect(()=>{
+    const q=query.trim();
+    let cancelled=false;
+    if(q.length<2){ setTextMatches(new Set()); return ()=>{cancelled=true}; }
+    searchExtractedText(q).then(ids=>{if(!cancelled)setTextMatches(ids)}).catch(()=>{if(!cancelled)setTextMatches(new Set())});
+    return ()=>{cancelled=true};
+  },[query]);
   useEffect(()=>{ if(!notice)return; const t=setTimeout(()=>setNotice(""),2200); return()=>clearTimeout(t); },[notice]);
 
   const categories=useMemo(()=>["هەموو",...Array.from(new Set(books.map(b=>b.category).filter(Boolean)))],[books]);
@@ -87,10 +94,11 @@ function App(){
       if(category!=="هەموو"&&b.category!==category) return false;
       if(!q) return true;
       const bookNotes=notes.filter(n=>n.bookId===b.id).map(n=>[n.title,n.body,n.tags?.join(" ")].filter(Boolean).join(" ")).join(" ");
-      return [b.title,b.author,b.category,b.summary,b.summaryKu,b.tags?.join(" "),extractedText[b.id],bookNotes]
-        .filter(Boolean).join(" ").toLocaleLowerCase().includes(q);
+      const metadata=[b.title,b.author,b.category,b.summary,b.summaryKu,b.tags?.join(" "),bookNotes]
+        .filter(Boolean).join(" ").toLocaleLowerCase();
+      return metadata.includes(q) || textMatches.has(b.id);
     });
-  },[visibleBooks,query,category,extractedText,notes]);
+  },[visibleBooks,query,category,notes,textMatches]);
 
   async function openBook(book:Book){
     setSelected(book);
