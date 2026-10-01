@@ -1,17 +1,24 @@
 {
-  "name":"kurdish-library-offline",
-  "private":true,
-  "version":"0.2.0",
-  "type":"module",
-  "scripts":{"dev":"vite","build":"vite build","preview":"vite preview","android:sync":"cap sync android"},
-  "dependencies":{
-    "@capacitor/android":"^7.4.0",
-    "@capacitor/cli":"^7.4.0",
-    "@capacitor/core":"^7.4.0",
-    "@vitejs/plugin-react":"^5.0.4",
-    "react":"^19.1.1",
-    "react-dom":"^19.1.1",
-    "typescript":"^5.9.2",
-    "vite":"^7.1.7"
+  "name": "kurdish-library-offline",
+  "private": true,
+  "version": "0.3.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "android:sync": "cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.0",
+    "@capacitor/cli": "^7.4.0",
+    "@capacitor/core": "^7.4.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "epubjs": "^0.3.93",
+    "pdfjs-dist": "^5.4.149",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.7"
   }
 }
