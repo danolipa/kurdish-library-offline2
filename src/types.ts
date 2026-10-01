@@ -28,6 +28,18 @@ export type Highlight = {
   createdAt: number;
 };
 
+export type Note = {
+  id: string;
+  bookId: string;
+  title: string;
+  body: string;
+  page?: number;
+  tags?: string[];
+  color?: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
 export type BookState = {
   favorite: boolean;
   bookmark: boolean;
