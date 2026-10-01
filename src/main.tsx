@@ -79,8 +79,9 @@ function App(){
   const visibleBooks=tab==="favorites"?favoriteBooks:books;
   const filtered=useMemo(()=>{
     const q=query.trim().toLocaleLowerCase();
-    return visibleBooks.filter(b=>(category==="هەموو"||b.category===category)&&(!q||[b.title,b.author,b.category,b.summary,b.summaryKu,b.tags?.join(" "),extractedText[b.id]].filter(Boolean).join(" ").toLocaleLowerCase().includes(q)));
-  },[visibleBooks,query,category]);
+    const noteText=notes.filter(n=>!q||`${n.title} ${n.body}`.toLocaleLowerCase().includes(q)).map(n=>n.body).join(" ");
+    return visibleBooks.filter(b=>(category==="هەموو"||b.category===category)&&(!q||[b.title,b.author,b.category,b.summary,b.summaryKu,b.tags?.join(" "),extractedText[b.id],noteText].filter(Boolean).join(" ").toLocaleLowerCase().includes(q)));
+  },[visibleBooks,query,category,extractedText,notes]);
 
   async function openBook(book:Book){
     setSelected(book);
