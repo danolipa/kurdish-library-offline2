@@ -148,7 +148,7 @@ function App(){
 
       {selected&&detailsOpen&&<div className="modal" onClick={()=>setDetailsOpen(false)}><div className="book-details" onClick={e=>e.stopPropagation()}><div className="reader-head"><div><strong>{selected.title}</strong><small>{selected.author}</small></div><button onClick={()=>setDetailsOpen(false)}>✕</button></div><div className="book-details-grid"><div className="detail-cover">{selected.coverPath?<img src={selected.coverPath} alt="" />:<div>{selected.format==="pdf"?"📕":selected.format==="epub"?"📘":"📖"}</div>}</div><div><h2>{selected.title}</h2><p className="author-line">✍️ {selected.author}</p><p>📂 {selected.category} · {selected.language}</p><p>📄 {selected.format.toUpperCase()}</p>{selected.sizeBytes&&<p>💾 {(selected.sizeBytes/1024/1024).toFixed(1)} MB</p>}<div className="progress-line"><span style={{width:`${Math.round((states[selected.id]?.progress||0)*100)}%`}} /></div><small>{Math.round((states[selected.id]?.progress||0)*100)}% خوێندراوەتەوە</small></div></div>{(selected.summaryKu||selected.summary)&&<section className="detail-summary"><h3>✨ پوختە</h3><p>{selected.summaryKu||selected.summary}</p></section>}{summaries.filter(s=>s.bookId===selected.id).slice(0,1).map(s=><section className="detail-summary" key={s.id}><h3>✨ پوختەی ئۆفلاین</h3><p>{s.textKu}</p></section>)}<div className="detail-quotes">{quotes.filter(q=>q.author===selected.author||q.authorId===selected.author).slice(0,3).map(q=><blockquote key={q.id}>“{q.textKu}”<small>— {q.author}</small></blockquote>)}</div><div className="detail-actions"><button onClick={()=>{setDetailsOpen(false)}}>📖 خوێندنەوە</button><button onClick={()=>toggle("favorite")}>{states[selected.id]?.favorite?"❤️ دڵخوازە":"🤍 زیادکردن بۆ دڵخواز"}</button><button onClick={()=>toggle("bookmark")}>🔖 نیشانە</button></div></div></div>}
       {selected&&!detailsOpen&&<div className="modal" onClick={closeReader}><div className="reader" onClick={e=>e.stopPropagation()}><div className="reader-head"><div><strong>{selected.title}</strong><small>{selected.author} · {selected.format.toUpperCase()}</small></div><button onClick={closeReader}>✕</button></div>
-      <ReaderContent book={selected} url={fileUrl} fontSize={fontSize} onProgress={v=>saveProgress(selected.id,v)} onNotice={setNotice} ink={readerMode==="ink"} split={split}/>
+      <ReaderContent book={selected} url={fileUrl} fontSize={fontSize} onProgress={v=>saveProgress(selected.id,v)} onNotice={setNotice} ink={readerMode==="ink"} split={split} initialProgress={states[selected.id]?.progress||0}/>
       <div className="reader-tools"><button className={readerMode==="ink"?"active-tool":""} onClick={()=>setReaderMode(readerMode==="ink"?"normal":"ink")}>🖋️ Ink</button><span>Split:</span>{([1,2,4] as const).map(n=><button key={n} className={split===n?"active-tool":""} onClick={()=>setSplit(n)}>{n}×</button>)}</div><div className="reader-foot"><button onClick={()=>toggle("favorite")}>{states[selected.id]?.favorite?"❤️":"🤍"} دڵخواز</button><button onClick={()=>toggle("bookmark")}>{states[selected.id]?.bookmark?"🔖":"📑"} نیشانە</button><button onClick={note}>📝 تێبینی</button><button onClick={speak}>🔊 خوێندنەوە</button><button onClick={addHighlight}>🖍️ Highlight</button>{selected.format==="pdf"&&<button onClick={runOcr} disabled={ocrBusy}>🔎 {ocrBusy?"OCR…":"OCR"}</button>}<button onClick={()=>setFontSize(v=>Math.min(30,v+2))}>A+</button><button onClick={()=>setFontSize(v=>Math.max(14,v-2))}>A−</button></div>
       </div></div>}
       {notebookOpen&&<div className="modal" onClick={()=>setNotebookOpen(false)}><div className="notebook" onClick={e=>e.stopPropagation()}><div className="reader-head"><div><strong>🗒️ تۆمار و تێبینی</strong><small>تێبینییەکانت بە ئۆفلاین هەڵدەگیرێن</small></div><button onClick={()=>setNotebookOpen(false)}>✕</button></div><div className="notebook-grid"><div><input placeholder="گەڕان لە تێبینییەکان..." value={notebookFilter} onChange={e=>setNotebookFilter(e.target.value)}/><div className="notebook-list">{books.filter(b=>{const n=states[b.id]?.note||"";return n&&(!notebookFilter||`${b.title} ${n}`.toLocaleLowerCase().includes(notebookFilter.toLocaleLowerCase()))}).map(b=><article key={b.id}><strong>{b.title}</strong><small>{b.author}</small><p>{states[b.id]?.note}</p><button onClick={()=>{setSelected(b);setDetailsOpen(false);setNotebookOpen(false);}}>📖 کردنەوە</button></article>)}{!books.some(b=>states[b.id]?.note)&&<p>هێشتا تێبینییەکت نییە.</p>}</div></div><div className="notebook-editor"><input placeholder="ناونیشانی تۆمار" value={noteTitle} onChange={e=>setNoteTitle(e.target.value)}/><textarea placeholder="تێبینییەک بنووسە..." value={noteDraft} onChange={e=>setNoteDraft(e.target.value)} rows={12}/><button onClick={async()=>{if(!selected||!noteDraft.trim())return;await saveBookState(selected.id,{note:noteDraft});setStates(x=>({...x,[selected.id]:{...(x[selected.id]||{favorite:false,bookmark:false,note:"",progress:0}),note:noteDraft}}));setNotice("تۆمار پاشەکەوت کرا ✓");}}>💾 پاشەکەوتکردن</button></div></div></div></div>}
@@ -177,24 +177,143 @@ async function extractPdfText(blob:Blob,id:string,setText:React.Dispatch<React.S
 
 function bookTextFor(book:Book){ return (window as any).__kurdishLibraryText?.[book.id] || ""; }
 
-function ReaderContent({book,url,fontSize,onProgress,onNotice,ink,split}:{book:Book;url:string|null;fontSize:number;onProgress:(v:number)=>void;onNotice:(s:string)=>void;ink:boolean;split:1|2|4}){
+function ReaderContent({book,url,fontSize,onProgress,onNotice,ink,split,initialProgress}:{book:Book;url:string|null;fontSize:number;onProgress:(v:number)=>void;onNotice:(s:string)=>void;ink:boolean;split:1|2|4;initialProgress?:number}){
   const ref=useRef<HTMLDivElement>(null);
-  if(book.format==="pdf"&&url)return <PdfReader url={url} onProgress={onProgress} onNotice={onNotice} ink={ink} split={split}/>;
+  if(book.format==="pdf"&&url)return <PdfReader url={url} onProgress={onProgress} onNotice={onNotice} ink={ink} split={split} initialProgress={initialProgress||0}/>;
   if(book.format==="epub"&&url)return <EpubReader url={url} onProgress={onProgress} onNotice={onNotice}/>;
   const text=bookTextFor(book)||book.summaryKu||book.summary||"ئەم کتێبە بۆ خوێندنەوەی ئۆفلاین ئامادەیە.";
   return <div className="text-reader" ref={ref} style={{fontSize}} onScroll={e=>{const el=e.currentTarget;onProgress(el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight));}}><h1>{book.title}</h1><p>{text}</p></div>
 }
-function PdfReader({url,onProgress,onNotice,ink,split}:{url:string;onProgress:(v:number)=>void;onNotice:(s:string)=>void;ink:boolean;split:1|2|4}){
-  const host=useRef<HTMLDivElement>(null); const touch=useRef({x:0,y:0,dist:0});
-  const [page,setPage]=useState(1); const [total,setTotal]=useState(0); const [zoom,setZoom]=useState(1);
-  useEffect(()=>{let cancelled=false;let pdf:any; (async()=>{try{pdf=await pdfjsLib.getDocument(url).promise;if(cancelled)return;setTotal(pdf.numPages);const root=host.current;if(!root)return;root.innerHTML="";for(let n=1;n<=pdf.numPages;n++){if(cancelled)break;const p=await pdf.getPage(n);const viewport=p.getViewport({scale:1.35});const canvas=document.createElement("canvas");canvas.className="pdf-page";canvas.width=viewport.width;canvas.height=viewport.height;await p.render({canvasContext:canvas.getContext("2d")!,viewport}).promise;if(split===1)root.appendChild(canvas);else{const cols=2;const rows=split===2?1:2;const partW=Math.floor(canvas.width/cols),partH=Math.floor(canvas.height/rows);for(let part=0;part<split;part++){const cc=document.createElement("canvas");cc.className="pdf-page pdf-slice";cc.width=partW;cc.height=partH;const ctx=cc.getContext("2d")!;ctx.drawImage(canvas,(part%cols)*partW,Math.floor(part/cols)*partH,partW,partH,0,0,partW,partH);root.appendChild(cc)}canvas.remove()}}onNotice("PDF ئامادەیە ✓")}catch{onNotice("نەتوانرا PDF بکرێتەوە")}})();return()=>{cancelled=true;pdf?.destroy?.()};},[url,split]);
-  function swipe(dx:number){const el=host.current?.parentElement;if(!el)return;if(Math.abs(dx)>55)el.scrollBy({left:dx<0?el.clientWidth:-el.clientWidth,behavior:"smooth"})}
-  return <div className={`document-reader split-${split} ${ink ? "ink" : ""}`} onTouchStart={e=>{const a=e.touches[0];touch.current={x:a.clientX,y:a.clientY,dist:0}}} onTouchMove={e=>{if(e.touches.length===2){const a=e.touches[0],b=e.touches[1];touch.current.dist=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)}}} onTouchEnd={e=>{const a=e.changedTouches[0];const dx=a.clientX-touch.current.x;if(touch.current.dist===0)swipe(dx)}} onWheel={e=>{if(e.ctrlKey){e.preventDefault();setZoom(z=>Math.max(.7,Math.min(3,z-e.deltaY*.002)))}}} style={{"--reader-zoom":zoom} as React.CSSProperties} onScroll={e=>{const el=e.currentTarget;const v=el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight);onProgress(v);setPage(Math.max(1,Math.min(total,Math.round(v*Math.max(1,total-1))+1)))}}><div ref={host}/><div className="zoom-bar"><button onClick={()=>setZoom(z=>Math.max(.7,z-.15))}>−</button><span>{Math.round(zoom*100)}%</span><button onClick={()=>setZoom(z=>Math.min(3,z+.15))}>+</button><button onClick={()=>setZoom(1)}>100%</button></div><div className="page-indicator">{page} / {total||"…"}</div></div>
+
+function PdfReader({url,onProgress,onNotice,ink,split,initialProgress}:{url:string;onProgress:(v:number)=>void;onNotice:(s:string)=>void;ink:boolean;split:1|2|4;initialProgress:number}){
+  const host=useRef<HTMLDivElement>(null);
+  const touch=useRef({x:0,y:0,dist:0});
+  const [pdf,setPdf]=useState<any>(null);
+  const [page,setPage]=useState(1);
+  const [total,setTotal]=useState(0);
+  const [zoom,setZoom]=useState(1);
+  const [loading,setLoading]=useState(true);
+
+  useEffect(()=>{
+    let cancelled=false;
+    (async()=>{
+      try{
+        const doc=await pdfjsLib.getDocument(url).promise;
+        if(cancelled){doc.destroy();return;}
+        setPdf(doc); setTotal(doc.numPages);
+        setPage(Math.max(1,Math.min(doc.numPages,Math.floor(initialProgress*Math.max(0,doc.numPages-1))+1)));
+        onNotice("PDF ئامادەیە ✓");
+      }catch{onNotice("نەتوانرا PDF بکرێتەوە");}
+    })();
+    return()=>{cancelled=true;setPdf(null);};
+  },[url]);
+
+  useEffect(()=>{
+    if(!pdf||!host.current)return;
+    let cancelled=false;
+    setLoading(true);
+    (async()=>{
+      try{
+        const p=await pdf.getPage(page);
+        const base=1.35*zoom;
+        const viewport=p.getViewport({scale:base});
+        const canvas=document.createElement("canvas");
+        canvas.className="pdf-page";
+        canvas.width=Math.ceil(viewport.width);
+        canvas.height=Math.ceil(viewport.height);
+        const ctx=canvas.getContext("2d");
+        if(!ctx)throw new Error("canvas");
+        await p.render({canvasContext:ctx,viewport}).promise;
+        if(cancelled)return;
+        const root=host.current!;
+        root.replaceChildren();
+        if(split===1){root.appendChild(canvas);}
+        else{
+          const cols=2, rows=split===2?1:2;
+          const partW=Math.floor(canvas.width/cols), partH=Math.floor(canvas.height/rows);
+          for(let part=0;part<split;part++){
+            const slice=document.createElement("canvas");
+            slice.className="pdf-page pdf-slice";
+            slice.width=partW; slice.height=partH;
+            slice.getContext("2d")!.drawImage(canvas,(part%cols)*partW,Math.floor(part/cols)*partH,partW,partH,0,0,partW,partH);
+            root.appendChild(slice);
+          }
+          canvas.remove();
+        }
+        setLoading(false);
+      }catch{if(!cancelled){setLoading(false);onNotice("نەتوانرا لاپەڕەکە پیشان بدرێت");}}
+    })();
+    return()=>{cancelled=true;};
+  },[pdf,page,split,zoom]);
+
+  useEffect(()=>{onProgress(total>1?(page-1)/(total-1):0);},[page,total]);
+
+  function go(next:number){
+    setPage(p=>Math.max(1,Math.min(total||1,p+next)));
+  }
+  function swipe(dx:number,dy:number){
+    if(Math.abs(dx)>65 && Math.abs(dx)>Math.abs(dy)*1.15) go(dx<0?1:-1);
+  }
+
+  return <div className={`document-reader pdf-page-reader ${ink?"ink":""}`}
+    onTouchStart={e=>{const a=e.touches[0];touch.current={x:a.clientX,y:a.clientY,dist:e.touches.length===2?1:0}}}
+    onTouchMove={e=>{if(e.touches.length===2)touch.current.dist=1}}
+    onTouchEnd={e=>{const a=e.changedTouches[0];if(touch.current.dist===0)swipe(a.clientX-touch.current.x,a.clientY-touch.current.y);touch.current.dist=0}}
+    onKeyDown={e=>{if(e.key==="ArrowLeft")go(-1);if(e.key==="ArrowRight")go(1);}}
+    tabIndex={0}>
+    <div className="pdf-page-toolbar">
+      <button onClick={()=>go(-1)} disabled={page<=1}>‹ پێشوو</button>
+      <span>{page} / {total||"…"}</span>
+      <button onClick={()=>go(1)} disabled={!total||page>=total}>دواتر ›</button>
+    </div>
+    <div ref={host} className="pdf-page-host"/>
+    {loading&&<div className="reader-message">لاپەڕەکە بار دەکرێت…</div>}
+    <div className="zoom-bar"><button onClick={()=>setZoom(z=>Math.max(.6,z-.15))}>−</button><span>{Math.round(zoom*100)}%</span><button onClick={()=>setZoom(z=>Math.min(3,z+.15))}>+</button><button onClick={()=>setZoom(1)}>100%</button></div>
+    <div className="page-indicator">{page} / {total||"…"}</div>
+  </div>
 }
+
 function EpubReader({url,onProgress,onNotice}:{url:string;onProgress:(v:number)=>void;onNotice:(s:string)=>void}){
   const host=useRef<HTMLDivElement>(null);
-  useEffect(()=>{let book:any;let rendition:any; (async()=>{try{book=ePub(url);rendition=book.renderTo(host.current!,{width:"100%",height:"100%",flow:"scrolled-doc",manager:"continuous"});await rendition.display();onNotice("EPUB ئامادەیە ✓");}catch(e){onNotice("نەتوانرا EPUB بکرێتەوە");}})();return()=>{rendition?.destroy?.();book?.destroy?.();};},[url]);
+  useEffect(()=>{let book:any;let rendition:any; (async()=>{try{book=ePub(url);rendition=book.renderTo(host.current!,{width:"100%",height:"100%",flow:"scrolled-doc",manager:"continuous"});await rendition.display();onNotice("EPUB ئامادەیە ✓");}catch{onNotice("نەتوانرا EPUB بکرێتەوە");}})();return()=>{rendition?.destroy?.();book?.destroy?.();};},[url]);
   return <div className="document-reader epub-reader" onScroll={e=>{const el=e.currentTarget;onProgress(el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight));}}><div ref={host} className="epub-host"/></div>
 }
+
+function MediaPlayer(){
+  const mediaRef=useRef<HTMLVideoElement>(null);
+  const [src,setSrc]=useState<string|null>(null);
+  const [name,setName]=useState("");
+  const [playing,setPlaying]=useState(false);
+  const [speed,setSpeed]=useState(1);
+  const [muted,setMuted]=useState(false);
+  const [time,setTime]=useState(0);
+  const [duration,setDuration]=useState(0);
+  const [isVideo,setIsVideo]=useState(true);
+
+  function pick(e:React.ChangeEvent<HTMLInputElement>){
+    const f=e.target.files?.[0]; if(!f)return;
+    if(src)URL.revokeObjectURL(src);
+    setSrc(URL.createObjectURL(f)); setName(f.name); setIsVideo(f.type.startsWith("video/")); setPlaying(false); setTime(0); setDuration(0);
+  }
+  function seek(delta:number){const el=mediaRef.current;if(el)el.currentTime=Math.max(0,Math.min(el.duration||0,el.currentTime+delta));}
+  function togglePlay(){const el=mediaRef.current;if(!el)return;if(el.paused){el.play();setPlaying(true);}else{el.pause();setPlaying(false);}}
+  function changeSpeed(){const next=speed>=2?0.5:speed+0.5;setSpeed(next);if(mediaRef.current)mediaRef.current.playbackRate=next;}
+  function toggleMute(){const el=mediaRef.current;if(!el)return;el.muted=!el.muted;setMuted(el.muted);}
+  function fullscreen(){mediaRef.current?.requestFullscreen?.();}
+
+  return <section className="media-panel"><h2>🎬 میدیا پلەیەر</h2><p>فایلەکانی دەنگ و ڤیدیۆ لە ناوخۆی ئامێرەکەت بە شێوەی ئۆفلاین پەخش بکە.</p>
+    <input type="file" accept="audio/*,video/*" onChange={pick}/>
+    <div className="media-name">{name||"هیچ فایلێک هەڵنەبژێردراوە"}</div>
+    {src&&<video ref={mediaRef} className={`media-video ${isVideo?"":"audio-only"}`} src={src} playsInline onTimeUpdate={e=>setTime(e.currentTarget.currentTime)} onLoadedMetadata={e=>setDuration(e.currentTarget.duration)} onPlay={()=>setPlaying(true)} onPause={()=>setPlaying(false)} controls={false}/>}
+    <input className="media-progress" type="range" min="0" max={duration||0.1} step="0.1" value={Math.min(time,duration||0.1)} onChange={e=>{const v=Number(e.target.value);setTime(v);if(mediaRef.current)mediaRef.current.currentTime=v}} disabled={!src}/>
+    <div className="media-times"><span>{formatTime(time)}</span><span>{formatTime(duration)}</span></div>
+    <div className="media-actions">
+      <button onClick={()=>seek(-10)} disabled={!src}>⏮︎ 10s</button><button onClick={togglePlay} disabled={!src}>{playing?"⏸︎":"▶︎"}</button><button onClick={()=>seek(10)} disabled={!src}>10s ⏭︎</button>
+      <button onClick={changeSpeed} disabled={!src}>{speed}×</button><button onClick={toggleMute} disabled={!src}>{muted?"🔇":"🔊"}</button><button onClick={fullscreen} disabled={!src}>⛶</button>
+    </div>
+    <small>پشتیوانییە سەرەتایییەکان: play/pause، پاش/پێش ١٠ چرکە، خێرایی، mute، seek و fullscreen.</small>
+  </section>
+}
+function formatTime(value:number){if(!Number.isFinite(value))return "00:00";const m=Math.floor(value/60),s=Math.floor(value%60);return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`}
 createRoot(document.getElementById("root")!).render(<App/>);
 function MediaPlayer(){return <section className="media-panel"><h2>🎬 میدیا پلەیەر</h2><p>پلەیەری ناوخۆیی بۆ فایلەکانی دەنگ و ڤیدیۆ، بە پشتگیری offline.</p><input type="file" accept="audio/*,video/*" onChange={e=>{const f=e.target.files?.[0];const el=document.getElementById("media-element") as HTMLMediaElement|null;if(f&&el){el.src=URL.createObjectURL(f);el.load();}}}/><video id="media-element" className="media-video" controls playsInline/><div className="media-actions"><button>⏮︎ 10s</button><button>▶︎ / ⏸</button><button>⏭︎ 10s</button><button>1×</button><button>🔊 دەنگ</button><button>⛶ پڕ شاشە</button></div><small>بنەمای پلەیەرەکە بۆ زیادکردنی playback speed، subtitles، audio tracks و gesture controls ئامادە کراوە.</small></section>}
