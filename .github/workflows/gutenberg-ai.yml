@@ -1,0 +1,49 @@
+name: Automatic Gutenberg AI Summaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      books_per_run:
+        description: "How many queued books to summarize"
+        required: false
+        default: "5"
+  schedule:
+    - cron: "30 2 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gutenberg-ai-summary
+  cancel-in-progress: false
+
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run AI summarizer
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          BOOKS_PER_RUN: ${{ inputs.books_per_run || '5' }}
+        run: node scripts/gutenberg-auto-summarize.mjs
+      - name: Rebuild bundled summaries
+        run: node scripts/gutenberg-rebuild-summaries.mjs
+      - name: Commit completed summaries
+        run: |
+          git config user.name "kurdish-library-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add content/gutenberg/summary-queue.json content/gutenberg/generated src/data/summaries.json
+          if git diff --cached --quiet; then
+            echo "No new summaries to commit."
+            exit 0
+          fi
+          git commit -m "Auto-generate Gutenberg Sorani summaries"
+          git push
