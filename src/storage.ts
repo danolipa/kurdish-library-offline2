@@ -1,7 +1,7 @@
 import type { Author, Book, BookState, Quote, Summary } from "./types";
 
 const DB_NAME = "kurdish-library";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -15,6 +15,7 @@ function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains("summaries")) db.createObjectStore("summaries", { keyPath: "id" });
       if (!db.objectStoreNames.contains("quotes")) db.createObjectStore("quotes", { keyPath: "id" });
       if (!db.objectStoreNames.contains("authors")) db.createObjectStore("authors", { keyPath: "id" });
+      if (!db.objectStoreNames.contains("text")) db.createObjectStore("text");
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -117,3 +118,14 @@ export async function getQuotes(): Promise<Quote[]> { return getAll<Quote>("quot
 export async function saveQuotes(items: Quote[]) { return putAll("quotes", items); }
 export async function getAuthors(): Promise<Author[]> { return getAll<Author>("authors"); }
 export async function saveAuthors(items: Author[]) { return putAll("authors", items); }
+
+export async function saveExtractedText(id:string,text:string){
+  const db=await openDb();
+  await new Promise<void>((resolve,reject)=>{const tx=db.transaction("text","readwrite");tx.objectStore("text").put(text,id);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);});
+  db.close();
+}
+export async function getExtractedText(id:string):Promise<string>{
+  const db=await openDb();
+  const value=await new Promise<string>((resolve,reject)=>{const r=db.transaction("text").objectStore("text").get(id);r.onsuccess=()=>resolve((r.result as string)||"");r.onerror=()=>reject(r.error);});
+  db.close(); return value;
+}
