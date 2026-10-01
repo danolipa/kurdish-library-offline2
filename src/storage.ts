@@ -158,3 +158,24 @@ export async function deleteNote(id: string) {
   await new Promise<void>((resolve,reject)=>{const tx=db.transaction("notes","readwrite");tx.objectStore("notes").delete(id);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);});
   db.close();
 }
+
+
+export async function searchExtractedText(query:string):Promise<Set<string>> {
+  const q=query.trim().toLocaleLowerCase();
+  const matches=new Set<string>();
+  if(q.length<2) return matches;
+  const db=await openDb();
+  await new Promise<void>((resolve,reject)=>{
+    const request=db.transaction("text").objectStore("text").openCursor();
+    request.onsuccess=()=>{
+      const cursor=request.result as IDBCursorWithValue|null;
+      if(!cursor){resolve();return;}
+      const value=String(cursor.value||"").toLocaleLowerCase();
+      if(value.includes(q)) matches.add(String(cursor.key));
+      cursor.continue();
+    };
+    request.onerror=()=>reject(request.error);
+  });
+  db.close();
+  return matches;
+}
