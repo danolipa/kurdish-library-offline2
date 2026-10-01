@@ -1,7 +1,7 @@
-import type { Author, Book, BookState, Quote, Summary } from "./types";
+import type { Author, Book, BookState, Highlight, Quote, Summary } from "./types";
 
 const DB_NAME = "kurdish-library";
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -16,6 +16,7 @@ function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains("quotes")) db.createObjectStore("quotes", { keyPath: "id" });
       if (!db.objectStoreNames.contains("authors")) db.createObjectStore("authors", { keyPath: "id" });
       if (!db.objectStoreNames.contains("text")) db.createObjectStore("text");
+      if (!db.objectStoreNames.contains("highlights")) db.createObjectStore("highlights", { keyPath: "id" });
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -128,4 +129,15 @@ export async function getExtractedText(id:string):Promise<string>{
   const db=await openDb();
   const value=await new Promise<string>((resolve,reject)=>{const r=db.transaction("text").objectStore("text").get(id);r.onsuccess=()=>resolve((r.result as string)||"");r.onerror=()=>reject(r.error);});
   db.close(); return value;
+}
+
+export async function getHighlights(bookId?: string): Promise<Highlight[]> {
+  const items = await getAll<Highlight>("highlights");
+  return bookId ? items.filter(x => x.bookId === bookId).sort((a,b)=>b.createdAt-a.createdAt) : items;
+}
+export async function saveHighlight(item: Highlight) { return putAll("highlights", [item]); }
+export async function deleteHighlight(id: string) {
+  const db = await openDb();
+  await new Promise<void>((resolve,reject)=>{const tx=db.transaction("highlights","readwrite");tx.objectStore("highlights").delete(id);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);});
+  db.close();
 }
