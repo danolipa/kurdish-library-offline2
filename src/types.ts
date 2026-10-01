@@ -23,4 +23,42 @@ export type BookState = {
   bookmark: boolean;
   note: string;
   progress: number;
+  lastReadAt?: number;
+  updatedAt?: number;
+};
+
+export type Summary = {
+  id: string;
+  bookId: string;
+  title: string;
+  textKu: string;
+  textOriginal?: string;
+  wordCount?: number;
+  source?: string;
+  sourceUrl?: string;
+  rights?: string;
+  updatedAt?: string;
+};
+
+export type Quote = {
+  id: string;
+  textOriginal: string;
+  textKu: string;
+  author: string;
+  authorId?: string;
+  source?: string;
+  sourceUrl?: string;
+  rights?: string;
+  imagePath?: string;
+  updatedAt?: string;
+};
+
+export type Author = {
+  id: string;
+  name: string;
+  bioKu?: string;
+  imagePath?: string;
+  source?: string;
+  sourceUrl?: string;
+  rights?: string;
 };
