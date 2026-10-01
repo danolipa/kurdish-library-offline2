@@ -4,7 +4,7 @@ import * as pdfjsLib from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import ePub from "epubjs";
 import type { Book, Quote, Summary, Author } from "./types";
-import { getBookFile, getBookState, getBooks, getSummaries, getQuotes, getAuthors, saveBook, saveBookState, saveProgress, saveSummaries, saveQuotes, saveAuthors } from "./storage";
+import { getBookFile, getBookState, getBooks, getSummaries, getQuotes, getAuthors, saveBook, saveBookState, saveProgress, saveSummaries, saveQuotes, saveAuthors, getExtractedText, saveExtractedText } from "./storage";
 import "./styles.css";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
@@ -39,6 +39,7 @@ function App(){
   
 
   useEffect(()=>{ getBooks().then(saved=>{ if(saved.length) setBooks(saved); }); getSummaries().then(setSummaries); getQuotes().then(setQuotes); getAuthors().then(setAuthors); },[]);
+  useEffect(()=>{ books.forEach(b=>{ if(!extractedText[b.id]) getExtractedText(b.id).then(t=>{if(t)setExtractedText(x=>({...x,[b.id]:t}))}); }); },[books]);
   useEffect(()=>{ if(!notice)return; const t=setTimeout(()=>setNotice(""),2200); return()=>clearTimeout(t); },[notice]);
 
   const categories=useMemo(()=>["هەموو",...Array.from(new Set(books.map(b=>b.category).filter(Boolean)))],[books]);
@@ -126,6 +127,7 @@ async function extractPdfText(blob:Blob,id:string,setText:React.Dispatch<React.S
       chunks.push(content.items.map((x:any)=>x.str||"").join(" "));
     }
     setText(prev=>({...prev,[id]:chunks.join("\n\n")}));
+    await saveExtractedText(id,chunks.join("\n\n"));
     notice("دەقی PDF بۆ گەڕان ئامادە کرا ✓");
     await pdf.destroy();
   }catch{
