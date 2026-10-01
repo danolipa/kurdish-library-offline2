@@ -126,10 +126,10 @@ function App(){
   async function runOcr(){
     if(!selected || selected.format!=="pdf") return;
     const blob=await getBookFile(selected.id); if(!blob){setNotice("فایلی بۆ OCR نییە");return;}
-    setOcrBusy(true); setNotice("OCR دەستی پێکردووە…");
+    setOcrBusy(true); setNotice("OCR دەستی پێکردووە…");\n    // Kurdish traineddata is used so OCR is not silently limited to Arabic.
     try{
       const { createWorker }=await import("tesseract.js");
-      const worker=await createWorker("ara");
+      const worker=await createWorker("kur");
       const pdf=await pdfjsLib.getDocument({data:await blob.arrayBuffer()}).promise;
       const pages:string[]=[];
       const limit=Math.min(pdf.numPages,30);
