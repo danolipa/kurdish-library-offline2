@@ -43,6 +43,7 @@ export type Note = {
 export type BookState = {
   favorite: boolean;
   bookmark: boolean;
+  bookmarkPage?: number;
   note: string;
   progress: number;
   lastReadAt?: number;
