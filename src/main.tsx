@@ -1,1 +1,115 @@
-import React,{useMemo,useState} from "react"; import {createRoot} from "react-dom/client"; import "./styles.css"; type Book={id:number;title:string;author:string;category:string;description:string}; const booksSeed:Book[]=[{id:1,title:"نموونەی کتێبی یەکەم",author:"کتێبخانەی کوردی",category:"ئەدەب",description:"بناغەی سیستەمی کتێبخانە و خوێندنەوە."},{id:2,title:"زانست و ژیان",author:"کتێبخانەی کوردی",category:"زانست",description:"نموونەی کتێب بۆ تاقیکردنەوەی گەڕان و پۆلێن."},{id:3,title:"مێژووی کورد",author:"کتێبخانەی کوردی",category:"مێژوو",description:"نموونەی کتێب بۆ پڕۆژەی کتێبخانەی ئۆفلاین."}]; function App(){const[q,setQ]=useState("");const[c,setC]=useState("هەموو");const[t,setT]=useState("light");const[selected,setSelected]=useState<Book|null>(null);const cats=["هەموو",...new Set(booksSeed.map(b=>b.category))];const books=useMemo(()=>booksSeed.filter(b=>(c==="هەموو"||b.category===c)&&[b.title,b.author,b.description].join(" ").includes(q)),[q,c]);return <div className={"app "+t}><header><div><h1>📚 کتێبخانەی کوردی</h1><p>کتێبخانەی سۆرانی — ئۆفلاین</p></div><div>{["light","dark","sepia"].map(x=><button key={x} onClick={()=>setT(x)}>{x==="light"?"☀️":x==="dark"?"🌙":"📜"}</button>)}</div></header><main><section className="hero"><h2>هەموو کتێبەکانت لە یەک شوێن</h2><p>بناغەی ئەپی کتێبخانەی گەورەی سۆرانی.</p><input placeholder="گەڕان بە ناوی کتێب یان نووسەر..." value={q} onChange={e=>setQ(e.target.value)}/></section><nav className="chips">{cats.map(x=><button className={c===x?"active":""} onClick={()=>setC(x)} key={x}>{x}</button>)}</nav><section className="grid">{books.map(b=><article className="card" key={b.id} onClick={()=>setSelected(b)}><div className="cover">📖</div><div><small>{b.category}</small><h3>{b.title}</h3><p>{b.author}</p><span>{b.description}</span></div></article>)}</section>{selected&&<div className="modal" onClick={()=>setSelected(null)}><div className="reader" onClick={e=>e.stopPropagation()}><button className="close" onClick={()=>setSelected(null)}>×</button><div className="reader-cover">📖</div><h2>{selected.title}</h2><h3>{selected.author}</h3><p>{selected.description}</p><div><button>🔖 Bookmark</button><button>📝 Note</button><button>🔊 Read aloud</button></div><div className="placeholder">قۆناغی داهاتوو: PDF/EPUB reader، OCR، TTS، metadata و importی ٥٠٠٠ کتێب.</div></div></div>}</main></div>} createRoot(document.getElementById("root")!).render(<App/>);
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createRoot } from "react-dom/client";
+import * as pdfjsLib from "pdfjs-dist";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import ePub from "epubjs";
+import type { Book } from "./types";
+import { getBookFile, getBookState, getBooks, saveBook, saveBookState, saveProgress } from "./storage";
+import "./styles.css";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+
+const seed: Book[] = [
+  { id:"demo-1", title:"نموونەی کتێبی یەکەم", author:"کتێبخانەی کوردی", category:"ئەدەب", language:"کوردی", format:"txt", summary:"ئەمە کتێبێکی نموونەییە بۆ تاقیکردنەوەی خوێندنەوە.", addedAt:Date.now(), source:"bundle" },
+  { id:"demo-2", title:"زانست و ژیان", author:"کتێبخانەی کوردی", category:"زانست", language:"کوردی", format:"txt", summary:"بابەتێکی نموونەیی لەسەر زانست و ژیان.", addedAt:Date.now()-1, source:"bundle" },
+  { id:"demo-3", title:"مێژووی کورد", author:"کتێبخانەی کوردی", category:"مێژوو", language:"کوردی", format:"txt", summary:"نموونەیەک بۆ پۆلێنکردن و گەڕان.", addedAt:Date.now()-2, source:"bundle" }
+];
+
+function App(){
+  const [books,setBooks]=useState<Book[]>(seed);
+  const [query,setQuery]=useState("");
+  const [category,setCategory]=useState("هەموو");
+  const [theme,setTheme]=useState<"light"|"dark"|"sepia">("light");
+  const [selected,setSelected]=useState<Book|null>(null);
+  const [states,setStates]=useState<Record<string,Awaited<ReturnType<typeof getBookState>>>>({});
+  const [notice,setNotice]=useState("");
+  const [fontSize,setFontSize]=useState(19);
+  const [fileUrl,setFileUrl]=useState<string|null>(null);
+
+  useEffect(()=>{ getBooks().then(saved=>{ if(saved.length) setBooks(saved); }); },[]);
+  useEffect(()=>{ if(!notice)return; const t=setTimeout(()=>setNotice(""),2200); return()=>clearTimeout(t); },[notice]);
+
+  const categories=useMemo(()=>["هەموو",...Array.from(new Set(books.map(b=>b.category).filter(Boolean)))],[books]);
+  const filtered=useMemo(()=>{
+    const q=query.trim().toLocaleLowerCase();
+    return books.filter(b=>(category==="هەموو"||b.category===category)&&(!q||[b.title,b.author,b.category,b.summary,b.summaryKu,b.tags?.join(" ")].filter(Boolean).join(" ").toLocaleLowerCase().includes(q)));
+  },[books,query,category]);
+
+  async function openBook(book:Book){
+    setSelected(book);
+    setFileUrl(null);
+    const s=await getBookState(book.id);
+    setStates(x=>({...x,[book.id]:s}));
+    if(book.source==="import"){
+      const blob=await getBookFile(book.id);
+      if(blob) setFileUrl(URL.createObjectURL(blob));
+    }
+  }
+  function closeReader(){ if(fileUrl) URL.revokeObjectURL(fileUrl); setFileUrl(null); setSelected(null); }
+  async function toggle(key:"favorite"|"bookmark"){
+    if(!selected)return;
+    const current=states[selected.id] ?? await getBookState(selected.id);
+    const next=!current[key];
+    await saveBookState(selected.id,{[key]:next});
+    setStates(x=>({...x,[selected.id]:{...current,[key]:next}}));
+    setNotice(next ? "پاشەکەوت کرا ✓" : "لابرا");
+  }
+  async function note(){
+    if(!selected)return;
+    const current=states[selected.id] ?? await getBookState(selected.id);
+    const value=window.prompt("تێبینییەک بنووسە",current.note)||"";
+    await saveBookState(selected.id,{note:value});
+    setStates(x=>({...x,[selected.id]:{...current,note:value}}));
+    setNotice("تێبینی پاشەکەوت کرا ✓");
+  }
+  function speak(){
+    if(!selected)return;
+    const text=selected.summaryKu||selected.summary||selected.title;
+    if("speechSynthesis" in window){ window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text); u.lang="ku"; u.rate=.9; window.speechSynthesis.speak(u); setNotice("خوێندنەوە دەستی پێکرد"); }
+    else setNotice("TTS لەم ئامێرەدا بەردەست نییە");
+  }
+  async function importFiles(e:React.ChangeEvent<HTMLInputElement>){
+    const files=Array.from(e.target.files||[]);
+    for(const file of files){
+      const ext=file.name.split(".").pop()?.toLowerCase()||"";
+      if(!["pdf","epub","txt","html","htm"].includes(ext)){ setNotice("ئەم جۆرە فایلە پشتگیری ناکرێت"); continue; }
+      const id="import-"+crypto.randomUUID();
+      const book:Book={id,title:file.name.replace(/\.[^.]+$/,""),author:"نەناسراو",category:"هاوردەکراو",language:"کوردی",format:ext==="htm"?"html":ext as Book["format"],fileName:file.name,sizeBytes:file.size,addedAt:Date.now(),source:"import"};
+      await saveBook(book,file); setBooks(prev=>[book,...prev]);
+    }
+    if(files.length)setNotice("کتێبەکان زیاد کران ✓");
+    e.target.value="";
+  }
+  return <div className={"app "+theme} lang="ckb" dir="rtl">
+    <header><div className="brand-area"><div className="brand">📚</div><div><h1>کتێبخانەی کوردی</h1><p>خوێندنەوەی سۆرانی — ئۆفلاین</p></div></div>
+      <div className="top-actions"><label className="import">➕ هاوردەکردن<input hidden type="file" multiple accept=".pdf,.epub,.txt,.html,.htm" onChange={importFiles}/></label>
+      <button onClick={()=>setTheme(theme==="light"?"dark":theme==="dark"?"sepia":"light")}>{theme==="light"?"☀️":theme==="dark"?"🌙":"📜"}</button></div></header>
+    <main><section className="hero"><div><div className="eyebrow">KURDISH LIBRARY • OFFLINE</div><h2>هەموو کتێبەکانت لە یەک شوێن</h2><p>گەڕان، خوێندنەوە، پاشەکەوتکردن و خوێندنەوەی PDF/EPUB بە شێوەی ئۆفلاین.</p></div><div className="stats"><strong>{books.length}</strong><span>کتێب</span><strong>{filtered.length}</strong><span>ئەنجام</span></div><input className="search" placeholder="گەڕان بە ناوی کتێب، نووسەر یان ناوەڕۆک..." value={query} onChange={e=>setQuery(e.target.value)}/></section>
+      <nav className="chips">{categories.map(x=><button className={category===x?"active":""} onClick={()=>setCategory(x)} key={x}>{x}</button>)}</nav>
+      <section className="grid">{filtered.map(b=><article className="card" key={b.id} onClick={()=>openBook(b)}><div className="cover">{b.format==="pdf"?"📕":b.format==="epub"?"📘":"📖"}</div><div className="card-body"><small>{b.category} · {b.format.toUpperCase()}</small><h3>{b.title}</h3><p>{b.author}</p><span>{b.summaryKu||b.summary||"کلیک بکە بۆ خوێندنەوە."}</span></div></article>)}</section>
+      {selected&&<div className="modal" onClick={closeReader}><div className="reader" onClick={e=>e.stopPropagation()}><div className="reader-head"><div><strong>{selected.title}</strong><small>{selected.author} · {selected.format.toUpperCase()}</small></div><button onClick={closeReader}>✕</button></div>
+      <ReaderContent book={selected} url={fileUrl} fontSize={fontSize} onProgress={v=>saveProgress(selected.id,v)} onNotice={setNotice}/>
+      <div className="reader-foot"><button onClick={()=>toggle("favorite")}>{states[selected.id]?.favorite?"❤️":"🤍"} دڵخواز</button><button onClick={()=>toggle("bookmark")}>{states[selected.id]?.bookmark?"🔖":"📑"} نیشانە</button><button onClick={note}>📝 تێبینی</button><button onClick={speak}>🔊 خوێندنەوە</button><button onClick={()=>setFontSize(v=>Math.min(30,v+2))}>A+</button><button onClick={()=>setFontSize(v=>Math.max(14,v-2))}>A−</button></div>
+      </div></div>}
+    </main>{notice&&<div className="toast">{notice}</div>}</div>
+}
+
+function ReaderContent({book,url,fontSize,onProgress,onNotice}:{book:Book;url:string|null;fontSize:number;onProgress:(v:number)=>void;onNotice:(s:string)=>void}){
+  const ref=useRef<HTMLDivElement>(null);
+  if(book.format==="pdf"&&url)return <PdfReader url={url} onProgress={onProgress} onNotice={onNotice}/>;
+  if(book.format==="epub"&&url)return <EpubReader url={url} onProgress={onProgress} onNotice={onNotice}/>;
+  const text=book.summaryKu||book.summary||"ئەم کتێبە بۆ خوێندنەوەی ئۆفلاین ئامادەیە.";
+  return <div className="text-reader" ref={ref} style={{fontSize}} onScroll={e=>{const el=e.currentTarget;onProgress(el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight));}}><h1>{book.title}</h1><p>{text}</p>{book.note&&<p>{book.note}</p>}</div>
+}
+function PdfReader({url,onProgress,onNotice}:{url:string;onProgress:(v:number)=>void;onNotice:(s:string)=>void}){
+  const host=useRef<HTMLDivElement>(null);
+  const [page,setPage]=useState(1); const [total,setTotal]=useState(0);
+  useEffect(()=>{let cancelled=false;let pdf:any; (async()=>{try{pdf=await pdfjsLib.getDocument(url).promise;if(cancelled)return;setTotal(pdf.numPages);const root=host.current;if(!root)return;root.innerHTML="";for(let n=1;n<=pdf.numPages;n++){if(cancelled)break;const p=await pdf.getPage(n);const viewport=p.getViewport({scale:1.35});const canvas=document.createElement("canvas");canvas.className="pdf-page";canvas.width=viewport.width;canvas.height=viewport.height;root.appendChild(canvas);await p.render({canvasContext:canvas.getContext("2d")!,viewport}).promise;}onNotice("PDF ئامادەیە ✓");}catch(e){onNotice("نەتوانرا PDF بکرێتەوە");}})();return()=>{cancelled=true;pdf?.destroy?.();};},[url]);
+  return <div className="document-reader" onScroll={e=>{const el=e.currentTarget;const v=el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight);onProgress(v);setPage(Math.max(1,Math.min(total,Math.round(v*Math.max(1,total-1))+1)));}}><div ref={host}/><div className="page-indicator">{page} / {total||"…"}</div></div>
+}
+function EpubReader({url,onProgress,onNotice}:{url:string;onProgress:(v:number)=>void;onNotice:(s:string)=>void}){
+  const host=useRef<HTMLDivElement>(null);
+  useEffect(()=>{let book:any;let rendition:any; (async()=>{try{book=ePub(url);rendition=book.renderTo(host.current!,{width:"100%",height:"100%",flow:"scrolled-doc",manager:"continuous"});await rendition.display();onNotice("EPUB ئامادەیە ✓");}catch(e){onNotice("نەتوانرا EPUB بکرێتەوە");}})();return()=>{rendition?.destroy?.();book?.destroy?.();};},[url]);
+  return <div className="document-reader epub-reader" onScroll={e=>{const el=e.currentTarget;onProgress(el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight));}}><div ref={host} className="epub-host"/></div>
+}
+createRoot(document.getElementById("root")!).render(<App/>);
