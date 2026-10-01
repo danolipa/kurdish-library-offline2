@@ -35,6 +35,7 @@ function App(){
   const [quotes,setQuotes]=useState<Quote[]>([]);
   const [authors,setAuthors]=useState<Author[]>([]);
   const [detailsOpen,setDetailsOpen]=useState(false);
+  const [bookText,setBookText]=useState<Record<string,string>>({});
 
   useEffect(()=>{ getBooks().then(saved=>{ if(saved.length) setBooks(saved); }); getSummaries().then(setSummaries); getQuotes().then(setQuotes); getAuthors().then(setAuthors); },[]);
   useEffect(()=>{ if(!notice)return; const t=setTimeout(()=>setNotice(""),2200); return()=>clearTimeout(t); },[notice]);
@@ -55,7 +56,7 @@ function App(){
     setStates(x=>({...x,[book.id]:s}));
     if(book.source==="import"){
       const blob=await getBookFile(book.id);
-      if(blob) setFileUrl(URL.createObjectURL(blob));
+      if(blob) { setFileUrl(URL.createObjectURL(blob)); if(book.format==="txt"||book.format==="html"){ const text=await blob.text(); setBookText(x=>({...x,[book.id]:text.replace(/<[^>]+>/g," ")})); (window as any).__kurdishLibraryText={...(window as any).__kurdishLibraryText,[book.id]:text.replace(/<[^>]+>/g," ")}; } }
     }
   }
   function closeReader(){ if(fileUrl) URL.revokeObjectURL(fileUrl); setFileUrl(null); setSelected(null); }
@@ -113,11 +114,13 @@ function App(){
     </main>{notice&&<div className="toast">{notice}</div>}</div>
 }
 
+function bookTextFor(book:Book){ return (window as any).__kurdishLibraryText?.[book.id] || ""; }
+
 function ReaderContent({book,url,fontSize,onProgress,onNotice,ink,split}:{book:Book;url:string|null;fontSize:number;onProgress:(v:number)=>void;onNotice:(s:string)=>void;ink:boolean;split:1|2|4}){
   const ref=useRef<HTMLDivElement>(null);
   if(book.format==="pdf"&&url)return <PdfReader url={url} onProgress={onProgress} onNotice={onNotice} ink={ink} split={split}/>;
   if(book.format==="epub"&&url)return <EpubReader url={url} onProgress={onProgress} onNotice={onNotice}/>;
-  const text=book.summaryKu||book.summary||"ئەم کتێبە بۆ خوێندنەوەی ئۆفلاین ئامادەیە.";
+  const text=bookTextFor(book)||book.summaryKu||book.summary||"ئەم کتێبە بۆ خوێندنەوەی ئۆفلاین ئامادەیە.";
   return <div className="text-reader" ref={ref} style={{fontSize}} onScroll={e=>{const el=e.currentTarget;onProgress(el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight));}}><h1>{book.title}</h1><p>{text}</p></div>
 }
 function PdfReader({url,onProgress,onNotice,ink,split}:{url:string;onProgress:(v:number)=>void;onNotice:(s:string)=>void;ink:boolean;split:1|2|4}){
