@@ -132,7 +132,8 @@ function App(){
   async function runOcr(){
     if(!selected || selected.format!=="pdf") return;
     const blob=await getBookFile(selected.id); if(!blob){setNotice("فایلی بۆ OCR نییە");return;}
-    setOcrBusy(true); setNotice("OCR دەستی پێکردووە…");\n    // Kurdish traineddata is used so OCR is not silently limited to Arabic.
+    setOcrBusy(true); setNotice("OCR دەستی پێکردووە…");
+    // Kurdish traineddata is used so OCR is not silently limited to Arabic.
     try{
       const { createWorker }=await import("tesseract.js");
       const worker=await createWorker("kur");
