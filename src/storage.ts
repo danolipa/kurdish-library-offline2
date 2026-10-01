@@ -82,7 +82,12 @@ export async function saveBookState(id: string, patch: Partial<BookState>) {
 }
 
 export async function saveProgress(id: string, value: number) {
-  await saveBookState(id, { progress: Math.max(0, Math.min(1, value)) });
+  const now = Date.now();
+  await saveBookState(id, {
+    progress: Math.max(0, Math.min(1, value)),
+    lastReadAt: now,
+    updatedAt: now
+  });
 }
 
 export async function getProgress(id: string): Promise<number> {
