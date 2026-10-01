@@ -12,6 +12,10 @@ jobs:
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
       - run: npm install --no-audit --no-fund
       - run: npm run build
       - run: npx tsc --noEmit
