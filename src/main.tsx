@@ -321,10 +321,15 @@ function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage,jum
 
 function EpubReader({url,onProgress,onNotice}:{url:string;onProgress:(v:number)=>void;onNotice:(s:string)=>void}){
   const host=useRef<HTMLDivElement>(null);
-  useEffect(()=>{let book:any;let rendition:any; (async()=>{try{book=ePub(url);rendition=book.renderTo(host.current!,{width:"100%",height:"100%",flow:"scrolled-doc",manager:"continuous"});await rendition.display();onNotice("EPUB ئامادەیە ✓");}catch{onNotice("نەتوانرا EPUB بکرێتەوە");}})();return()=>{rendition?.destroy?.();book?.destroy?.();};},[url]);
-  return <div className="document-reader epub-reader" onScroll={e=>{const el=e.currentTarget;onProgress(el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight));}}><div ref={host} className="epub-host"/></div>
+  const renditionRef=useRef<any>(null);
+  const [zoom,setZoom]=useState(100);
+  const [ready,setReady]=useState(false);
+  const [label,setLabel]=useState("1");
+  useEffect(()=>{let book:any;let rendition:any;let cancelled=false;(async()=>{try{book=ePub(url);rendition=book.renderTo(host.current!,{width:"100%",height:"100%",flow:"paginated",manager:"default"});renditionRef.current=rendition;rendition.on("relocated",(location:any)=>{const percentage=location?.start?.percentage;if(typeof percentage==="number")onProgress(Math.max(0,Math.min(1,percentage)));setLabel(String(location?.start?.displayed?.page||location?.start?.index||"1"));});await rendition.display();if(cancelled)return;rendition.themes.fontSize(zoom+"%");setReady(true);onNotice("EPUB ئامادەیە ✓");}catch{if(!cancelled)onNotice("نەتوانرا EPUB بکرێتەوە");}})();return()=>{cancelled=true;renditionRef.current=null;rendition?.destroy?.();book?.destroy?.();};},[url]);
+  function changeZoom(delta:number){setZoom(z=>{const next=Math.max(70,Math.min(180,z+delta));renditionRef.current?.themes?.fontSize?.(next+"%");return next;});}
+  function go(delta:number){if(delta<0)renditionRef.current?.prev?.();else renditionRef.current?.next?.();}
+  return <div className="document-reader epub-reader"><div className="epub-toolbar"><button onClick={()=>go(-1)} disabled={!ready}>‹ پێشوو</button><span>لاپەڕە {label}</span><button onClick={()=>go(1)} disabled={!ready}>دواتر ›</button><button onClick={()=>changeZoom(-10)} disabled={!ready}>A−</button><strong>{zoom}%</strong><button onClick={()=>changeZoom(10)} disabled={!ready}>A+</button></div><div ref={host} className="epub-host"/></div>
 }
-
 function MediaPlayer(){
   const mediaRef=useRef<HTMLVideoElement>(null);
   const [src,setSrc]=useState<string|null>(null);
