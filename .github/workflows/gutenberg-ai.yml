@@ -28,10 +28,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Run AI summarizer
+      - name: Run Groq AI summarizer
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: ${{ vars.GROQ_MODEL }}
           BOOKS_PER_RUN: ${{ inputs.books_per_run || '5' }}
         run: node scripts/gutenberg-auto-summarize.mjs
       - name: Rebuild bundled summaries
