@@ -1,0 +1,1 @@
+The Android project is generated in CI with Capacitor. The source repository stays small; the final CI job can inject the offline book bundle before packaging the APK.
