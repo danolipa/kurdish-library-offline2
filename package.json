@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "android:sync": "cap sync android",
-    "content:index": "node scripts/build-content-index.mjs content src/data"
+    "content:index": "node scripts/build-content-index.mjs content src/data",
+    "content:validate": "node scripts/validate-library.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",
