@@ -28,3 +28,5 @@
 .media-progress{width:100%;margin-top:8px}
 .media-times{display:flex;justify-content:space-between;font-variant-numeric:tabular-nums;font-size:12px;opacity:.65;direction:ltr}
 .media-video.audio-only{height:70px;max-height:70px}
+
+.reader-bookmark{border:0;border-radius:9px;padding:8px 12px;background:var(--accent,#4f46e5);color:#fff;margin:6px auto;display:block}.reader-bookmark:active{transform:scale(.98)}
