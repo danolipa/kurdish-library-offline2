@@ -20,6 +20,12 @@ const seed: Book[] = [
   { id:"demo-3", title:"مێژووی کورد", author:"کتێبخانەی کوردی", category:"مێژوو", language:"کوردی", format:"txt", summary:"نموونەیەک بۆ پۆلێنکردن و گەڕان.", addedAt:Date.now()-2, source:"bundle" }
 ];
 
+function PageControls({page,total,onChange}:{page:number;total:number;onChange:(page:number)=>void}){
+  if(total<=1)return null;
+  const from=Math.max(1,page-2), to=Math.min(total,from+4), start=Math.max(1,to-4);
+  return <div className="pager"><button disabled={page===1} onClick={()=>onChange(page-1)}>‹ پێشوو</button>{Array.from({length:to-start+1},(_,i)=>start+i).map(n=><button key={n} className={n===page?"active":""} onClick={()=>onChange(n)}>{n}</button>)}<button disabled={page===total} onClick={()=>onChange(page+1)}>دواتر ›</button></div>;
+}
+
 function App(){
   const [books,setBooks]=useState<Book[]>(seed);
   const [query,setQuery]=useState("");
@@ -55,6 +61,8 @@ function App(){
   const [highlights,setHighlights]=useState<Highlight[]>([]);
   const [readerJump,setReaderJump]=useState<number|undefined>(undefined);
   const [textMatches,setTextMatches]=useState<Set<string>>(new Set());
+  const [libraryPage,setLibraryPage]=useState(1);
+  const [summaryPage,setSummaryPage]=useState(1);
   
 
   async function persistNote(note: Note){
@@ -86,12 +94,22 @@ function App(){
     return ()=>{cancelled=true};
   },[query]);
   useEffect(()=>{ if(!notice)return; const t=setTimeout(()=>setNotice(""),2200); return()=>clearTimeout(t); },[notice]);
+  useEffect(()=>{setLibraryPage(1);},[query,category,tab,viewMode]);
+  useEffect(()=>{setSummaryPage(1);},[summaries.length]);
 
   const categories=useMemo(()=>["هەموو",...Array.from(new Set(books.map(b=>b.category).filter(Boolean)))],[books]);
   const favoriteBooks=useMemo(()=>books.filter(b=>states[b.id]?.favorite),[books,states]);
   const recentBooks=useMemo(()=>[...books].sort((a,b)=>(states[b.id]?.lastReadAt||0)-(states[a.id]?.lastReadAt||0)).slice(0,12),[books,states]);
   const resumeBooks=useMemo(()=>recentBooks.filter(b=>(states[b.id]?.progress||0)>0).slice(0,6),[recentBooks,states]);
   const visibleBooks=tab==="favorites"?favoriteBooks:books;
+  const pageSize=viewMode==="small"?60:40;
+  const totalLibraryPages=Math.max(1,Math.ceil(filtered.length/pageSize));
+  const safeLibraryPage=Math.min(libraryPage,totalLibraryPages);
+  const pagedBooks=filtered.slice((safeLibraryPage-1)*pageSize,safeLibraryPage*pageSize);
+  const summaryPageSize=6;
+  const totalSummaryPages=Math.max(1,Math.ceil(summaries.length/summaryPageSize));
+  const safeSummaryPage=Math.min(summaryPage,totalSummaryPages);
+  const pagedSummaries=summaries.slice((safeSummaryPage-1)*summaryPageSize,safeSummaryPage*summaryPageSize);
   const filtered=useMemo(()=>{
     const q=query.trim().toLocaleLowerCase();
     return visibleBooks.filter(b=>{
@@ -212,10 +230,10 @@ function App(){
 <section className="hero"><div><div className="eyebrow">KURDISH LIBRARY • OFFLINE</div><h2>هەموو کتێبەکانت لە یەک شوێن</h2><p>گەڕان، خوێندنەوە، پاشەکەوتکردن و خوێندنەوەی PDF/EPUB بە شێوەی ئۆفلاین.</p></div><div className="stats"><strong>{books.length}</strong><span>کتێب</span><strong>{filtered.length}</strong><span>ئەنجام</span></div><input className="search" placeholder="گەڕان بە ناوی کتێب، نووسەر یان ناوەڕۆک..." value={query} onChange={e=>setQuery(e.target.value)}/></section>
       <nav className="chips">{categories.map(x=><button className={category===x?"active":""} onClick={()=>setCategory(x)} key={x}>{x}</button>)}</nav>
       <section className="home-tools"><button onClick={()=>setSettingsOpen(true)}>⚙️ ڕێکخستنەکان</button><span className="view-label">پیشاندان:</span>{(["grid","shelf","list","small"] as const).map(v=><button key={v} className={viewMode===v?"active-tool":""} onClick={()=>setViewMode(v)}>{v==="grid"?"▦ گرید":v==="shelf"?"▤ ڕەف":v==="list"?"☰ لیست":"▪ ئایکۆنی بچوک"}</button>)}<button onClick={()=>setNotice("بەشی پوختە و وتەکان بۆ داتای ئۆفلاین ئامادە کراوە")}>✨ پوختە و وتەکان</button><button onClick={()=>setNotice("Ink Reader: بۆ PDF لە خوێندنەوەدا چالاکی بکە")}>🖋️ Ink Reader</button></section>      {tab==="home"&&<>{resumeBooks.length>0&&<section className="resume-panel"><h2>↩️ بەردەوامبوون لە خوێندنەوە</h2><div className="resume-row">{resumeBooks.map(b=><button key={b.id} onClick={()=>openBook(b)}><strong>{b.title}</strong><small>{Math.round((states[b.id]?.progress||0)*100)}% خوێندراوەتەوە</small></button>)}</div></section>}</>}
-      {tab==="summaries"&&<section className="content-panel"><h2>✨ پوختەی کتێبەکان</h2><p>پوختەکان لە ناوخۆی ئامێر هەڵدەگیرێن و بۆ گەڕان و خوێندنەوەی ئۆفلاین بەکاردێن.</p>{summaries.length?<div className="content-list">{summaries.map(s=><article key={s.id}><h3>{s.title}</h3><p>{s.textKu}</p><small>{s.wordCount?`ژمارەی وشە: ${s.wordCount} · `:""}{s.source||"داتای ئۆفلاین"}</small></article>)}</div>:<div className="empty-state"><strong>هێشتا پوختەی ئۆفلاین نییە.</strong><p>داتاپاکی JSON لە دوگمەی «داتاپاک» هاوردە بکە؛ دواتر پوختەکان لێرە و لە گەڕانی کتێبەکاندا دەردەکەون.</p></div>}</section>}
+      {tab==="summaries"&&<section className="content-panel"><h2>✨ پوختەی کتێبەکان</h2><p>پوختەکان لە ناوخۆی ئامێر هەڵدەگیرێن و بۆ گەڕان و خوێندنەوەی ئۆفلاین بەکاردێن.</p>{summaries.length?<div className="content-list">{pagedSummaries.map(s=><article key={s.id}><h3>{s.title}</h3><p>{s.textKu}</p><small>{s.wordCount?`ژمارەی وشە: ${s.wordCount} · `:""}{s.source||"داتای ئۆفلاین"}</small></article>)}</div><PageControls page={safeSummaryPage} total={totalSummaryPages} onChange={setSummaryPage}/>:<div className="empty-state"><strong>هێشتا پوختەی ئۆفلاین نییە.</strong><p>داتاپاکی JSON لە دوگمەی «داتاپاک» هاوردە بکە؛ دواتر پوختەکان لێرە و لە گەڕانی کتێبەکاندا دەردەکەون.</p></div>}</section>}
       {tab==="quotes"&&<section className="content-panel"><h2>💬 وتەکان</h2>{quotes.length?<div className="quote-list">{quotes.map(q=><article key={q.id}><blockquote>“{q.textKu}”</blockquote><strong>{q.author}</strong></article>)}</div>:<p>هێشتا وتەی ئۆفلاین زیاد نەکراوە. سیستەمی داتا ئامادەیە بۆ کۆمەڵەی زۆرتر.</p>}</section>}
       {tab==="media"&&<MediaPlayer/>}
-      {tab!=="media"&&<section className="notebook-launch"><button onClick={()=>setNotebookOpen(true)}>🗒️ تۆمار و تێبینییەکان</button><span>{Object.values(states).filter(s=>s.note).length} تێبینی</span></section>}{tab!=="summaries"&&tab!=="quotes"&&tab!=="media"&&<section className={`grid view-${viewMode}`}>{filtered.map(b=><article className="card" key={b.id} onClick={()=>openBook(b)}><div className="cover">{b.coverPath?<img src={b.coverPath} alt="" loading="lazy"/>:b.format==="pdf"?"📕":b.format==="epub"?"📘":"📖"}</div><div className="card-body"><small>{b.category} · {b.format.toUpperCase()}</small><h3>{b.title}</h3><p>{b.author}</p><span>{b.summaryKu||b.summary||"کلیک بکە بۆ خوێندنەوە."}</span>{states[b.id]?.progress>0&&<div className="book-progress"><i style={{width:`${Math.round((states[b.id]?.progress||0)*100)}%`}}/></div>}</div></article>)}</section>}
+      {tab!=="media"&&<section className="notebook-launch"><button onClick={()=>setNotebookOpen(true)}>🗒️ تۆمار و تێبینییەکان</button><span>{Object.values(states).filter(s=>s.note).length} تێبینی</span></section>}{tab!=="summaries"&&tab!=="quotes"&&tab!=="media"&&<section className={`grid view-${viewMode}`}>{pagedBooks.map(b=><article className="card" key={b.id} onClick={()=>openBook(b)}><div className="cover">{b.coverPath?<img src={b.coverPath} alt="" loading="lazy"/>:b.format==="pdf"?"📕":b.format==="epub"?"📘":"📖"}</div><div className="card-body"><small>{b.category} · {b.format.toUpperCase()}</small><h3>{b.title}</h3><p>{b.author}</p><span>{b.summaryKu||b.summary||"کلیک بکە بۆ خوێندنەوە."}</span>{states[b.id]?.progress>0&&<div className="book-progress"><i style={{width:`${Math.round((states[b.id]?.progress||0)*100)}%`}}/></div>}</div></article>)}</section>}{tab!=="summaries"&&tab!=="quotes"&&tab!=="media"&&<PageControls page={safeLibraryPage} total={totalLibraryPages} onChange={setLibraryPage}/>}
 
       {selected&&detailsOpen&&<div className="modal" onClick={()=>setDetailsOpen(false)}><div className="book-details" onClick={e=>e.stopPropagation()}><div className="reader-head"><div><strong>{selected.title}</strong><small>{selected.author}</small></div><button onClick={()=>setDetailsOpen(false)}>✕</button></div><div className="book-details-grid"><div className="detail-cover">{selected.coverPath?<img src={selected.coverPath} alt="" />:<div>{selected.format==="pdf"?"📕":selected.format==="epub"?"📘":"📖"}</div>}</div><div><h2>{selected.title}</h2><p className="author-line">✍️ {selected.author}</p><p>📂 {selected.category} · {selected.language}</p><p>📄 {selected.format.toUpperCase()}</p>{selected.sizeBytes&&<p>💾 {(selected.sizeBytes/1024/1024).toFixed(1)} MB</p>}<div className="progress-line"><span style={{width:`${Math.round((states[selected.id]?.progress||0)*100)}%`}} /></div><small>{Math.round((states[selected.id]?.progress||0)*100)}% خوێندراوەتەوە</small></div></div>{(selected.summaryKu||selected.summary)&&<section className="detail-summary"><h3>✨ پوختە</h3><p>{selected.summaryKu||selected.summary}</p></section>}{summaries.filter(s=>s.bookId===selected.id).slice(0,1).map(s=><section className="detail-summary" key={s.id}><h3>✨ پوختەی ئۆفلاین</h3><p>{s.textKu}</p></section>)}<div className="detail-quotes">{quotes.filter(q=>q.author===selected.author||q.authorId===selected.author).slice(0,3).map(q=><blockquote key={q.id}>“{q.textKu}”<small>— {q.author}</small></blockquote>)}</div><div className="detail-actions"><button onClick={()=>{setDetailsOpen(false)}}>📖 خوێندنەوە</button><button onClick={()=>toggle("favorite")}>{states[selected.id]?.favorite?"❤️ دڵخوازە":"🤍 زیادکردن بۆ دڵخواز"}</button><button onClick={()=>toggle("bookmark")}>🔖 نیشانە</button></div></div></div>}
       {selected&&!detailsOpen&&<div className="modal" onClick={closeReader}><div className="reader" onClick={e=>e.stopPropagation()}><div className="reader-head"><div><strong>{selected.title}</strong><small>{selected.author} · {selected.format.toUpperCase()}</small></div><button onClick={closeReader}>✕</button></div>
