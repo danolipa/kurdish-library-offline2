@@ -225,6 +225,8 @@ function App(){
 
 async function extractPdfText(blob:Blob,id:string,setText:React.Dispatch<React.SetStateAction<Record<string,string>>>,notice:(s:string)=>void){
   try{
+    const cached=await getExtractedText(id);
+    if(cached){ setText(prev=>({...prev,[id]:cached})); return; }
     const pdf=await pdfjsLib.getDocument({data:await blob.arrayBuffer()}).promise;
     const chunks:string[]=[];
     for(let n=1;n<=pdf.numPages;n++){
