@@ -18,6 +18,16 @@ export type Book = {
   source: "bundle" | "import";
 };
 
+export type Highlight = {
+  id: string;
+  bookId: string;
+  page?: number;
+  text: string;
+  note?: string;
+  color?: string;
+  createdAt: number;
+};
+
 export type BookState = {
   favorite: boolean;
   bookmark: boolean;
@@ -25,6 +35,7 @@ export type BookState = {
   progress: number;
   lastReadAt?: number;
   updatedAt?: number;
+  highlights?: Highlight[];
 };
 
 export type Summary = {
