@@ -17,3 +17,10 @@ export type Book = {
   addedAt: number;
   source: "bundle" | "import";
 };
+
+export type BookState = {
+  favorite: boolean;
+  bookmark: boolean;
+  note: string;
+  progress: number;
+};
