@@ -23,6 +23,7 @@ function App(){
   const [selected,setSelected]=useState<Book|null>(null);
   const [states,setStates]=useState<Record<string,Awaited<ReturnType<typeof getBookState>>>>({});
   const [notice,setNotice]=useState("");
+  const [readerPage,setReaderPage]=useState(1);
   const [fontSize,setFontSize]=useState(19);
   const [fileUrl,setFileUrl]=useState<string|null>(null);
   const [readerMode,setReaderMode]=useState<"normal"|"ink">("normal");
@@ -152,7 +153,7 @@ function App(){
 
       {selected&&detailsOpen&&<div className="modal" onClick={()=>setDetailsOpen(false)}><div className="book-details" onClick={e=>e.stopPropagation()}><div className="reader-head"><div><strong>{selected.title}</strong><small>{selected.author}</small></div><button onClick={()=>setDetailsOpen(false)}>✕</button></div><div className="book-details-grid"><div className="detail-cover">{selected.coverPath?<img src={selected.coverPath} alt="" />:<div>{selected.format==="pdf"?"📕":selected.format==="epub"?"📘":"📖"}</div>}</div><div><h2>{selected.title}</h2><p className="author-line">✍️ {selected.author}</p><p>📂 {selected.category} · {selected.language}</p><p>📄 {selected.format.toUpperCase()}</p>{selected.sizeBytes&&<p>💾 {(selected.sizeBytes/1024/1024).toFixed(1)} MB</p>}<div className="progress-line"><span style={{width:`${Math.round((states[selected.id]?.progress||0)*100)}%`}} /></div><small>{Math.round((states[selected.id]?.progress||0)*100)}% خوێندراوەتەوە</small></div></div>{(selected.summaryKu||selected.summary)&&<section className="detail-summary"><h3>✨ پوختە</h3><p>{selected.summaryKu||selected.summary}</p></section>}{summaries.filter(s=>s.bookId===selected.id).slice(0,1).map(s=><section className="detail-summary" key={s.id}><h3>✨ پوختەی ئۆفلاین</h3><p>{s.textKu}</p></section>)}<div className="detail-quotes">{quotes.filter(q=>q.author===selected.author||q.authorId===selected.author).slice(0,3).map(q=><blockquote key={q.id}>“{q.textKu}”<small>— {q.author}</small></blockquote>)}</div><div className="detail-actions"><button onClick={()=>{setDetailsOpen(false)}}>📖 خوێندنەوە</button><button onClick={()=>toggle("favorite")}>{states[selected.id]?.favorite?"❤️ دڵخوازە":"🤍 زیادکردن بۆ دڵخواز"}</button><button onClick={()=>toggle("bookmark")}>🔖 نیشانە</button></div></div></div>}
       {selected&&!detailsOpen&&<div className="modal" onClick={closeReader}><div className="reader" onClick={e=>e.stopPropagation()}><div className="reader-head"><div><strong>{selected.title}</strong><small>{selected.author} · {selected.format.toUpperCase()}</small></div><button onClick={closeReader}>✕</button></div>
-      <ReaderContent book={selected} url={fileUrl} fontSize={fontSize} onProgress={v=>saveProgress(selected.id,v)} onNotice={setNotice} ink={readerMode==="ink"} split={split} initialProgress={states[selected.id]?.progress||0}/>
+      <ReaderContent book={selected} url={fileUrl} fontSize={fontSize} onProgress={v=>saveProgress(selected.id,v)} onNotice={setNotice} ink={readerMode==="ink"} split={split} initialProgress={states[selected.id]?.progress||0} onPage={p=>setReaderPage(p)}/>
       <div className="reader-tools"><button className={readerMode==="ink"?"active-tool":""} onClick={()=>setReaderMode(readerMode==="ink"?"normal":"ink")}>🖋️ Ink</button><span>Split:</span>{([1,2,4] as const).map(n=><button key={n} className={split===n?"active-tool":""} onClick={()=>setSplit(n)}>{n}×</button>)}</div><div className="reader-foot"><button onClick={()=>toggle("favorite")}>{states[selected.id]?.favorite?"❤️":"🤍"} دڵخواز</button><button onClick={()=>toggle("bookmark")}>{states[selected.id]?.bookmark?"🔖":"📑"} نیشانە</button><button onClick={note}>📝 تێبینی</button><button onClick={speak}>🔊 خوێندنەوە</button><button onClick={addHighlight}>🖍️ Highlight</button>{selected.format==="pdf"&&<button onClick={runOcr} disabled={ocrBusy}>🔎 {ocrBusy?"OCR…":"OCR"}</button>}<button onClick={()=>setFontSize(v=>Math.min(30,v+2))}>A+</button><button onClick={()=>setFontSize(v=>Math.max(14,v-2))}>A−</button></div>
       </div></div>}
       {notebookOpen&&<div className="modal" onClick={()=>setNotebookOpen(false)}><div className="notebook" onClick={e=>e.stopPropagation()}><div className="reader-head"><div><strong>🗒️ تۆمار و تێبینی</strong><small>تێبینییەکانت بە ئۆفلاین هەڵدەگیرێن</small></div><button onClick={()=>setNotebookOpen(false)}>✕</button></div><div className="notebook-grid"><div><input placeholder="گەڕان لە تێبینییەکان..." value={notebookFilter} onChange={e=>setNotebookFilter(e.target.value)}/><div className="notebook-list">{books.filter(b=>{const n=states[b.id]?.note||"";return n&&(!notebookFilter||`${b.title} ${n}`.toLocaleLowerCase().includes(notebookFilter.toLocaleLowerCase()))}).map(b=><article key={b.id}><strong>{b.title}</strong><small>{b.author}</small><p>{states[b.id]?.note}</p><button onClick={()=>{setSelected(b);setDetailsOpen(false);setNotebookOpen(false);}}>📖 کردنەوە</button></article>)}{!books.some(b=>states[b.id]?.note)&&<p>هێشتا تێبینییەکت نییە.</p>}</div></div><div className="notebook-editor"><input placeholder="ناونیشانی تۆمار" value={noteTitle} onChange={e=>setNoteTitle(e.target.value)}/><textarea placeholder="تێبینییەک بنووسە..." value={noteDraft} onChange={e=>setNoteDraft(e.target.value)} rows={12}/><button onClick={async()=>{if(!selected||!noteDraft.trim())return;await saveBookState(selected.id,{note:noteDraft});setStates(x=>({...x,[selected.id]:{...(x[selected.id]||{favorite:false,bookmark:false,note:"",progress:0}),note:noteDraft}}));setNotice("تۆمار پاشەکەوت کرا ✓");}}>💾 پاشەکەوتکردن</button></div></div></div></div>}
@@ -181,15 +182,15 @@ async function extractPdfText(blob:Blob,id:string,setText:React.Dispatch<React.S
 
 function bookTextFor(book:Book){ return (window as any).__kurdishLibraryText?.[book.id] || ""; }
 
-function ReaderContent({book,url,fontSize,onProgress,onNotice,ink,split,initialProgress}:{book:Book;url:string|null;fontSize:number;onProgress:(v:number)=>void;onNotice:(s:string)=>void;ink:boolean;split:1|2|4;initialProgress?:number}){
+function ReaderContent({book,url,fontSize,onProgress,onNotice,ink,split,initialProgress}:{book:Book;url:string|null;fontSize:number;onProgress:(v:number)=>void;onNotice:(s:string)=>void;ink:boolean;split:1|2|4;initialProgress?:number;onPage?:(page:number,total:number)=>void}){
   const ref=useRef<HTMLDivElement>(null);
-  if(book.format==="pdf"&&url)return <PdfReader url={url} onProgress={onProgress} onNotice={onNotice} ink={ink} split={split} initialProgress={initialProgress||0}/>;
+  if(book.format==="pdf"&&url)return <PdfReader url={url} onProgress={onProgress} onNotice={onNotice} ink={ink} split={split} initialProgress={initialProgress||0} onPage={onPage}/>;
   if(book.format==="epub"&&url)return <EpubReader url={url} onProgress={onProgress} onNotice={onNotice}/>;
   const text=bookTextFor(book)||book.summaryKu||book.summary||"ئەم کتێبە بۆ خوێندنەوەی ئۆفلاین ئامادەیە.";
   return <div className="text-reader" ref={ref} style={{fontSize}} onScroll={e=>{const el=e.currentTarget;onProgress(el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight));}}><h1>{book.title}</h1><p>{text}</p></div>
 }
 
-function PdfReader({url,onProgress,onNotice,ink,split,initialProgress}:{url:string;onProgress:(v:number)=>void;onNotice:(s:string)=>void;ink:boolean;split:1|2|4;initialProgress:number}){
+function PdfReader({url,onProgress,onNotice,ink,split,initialProgress}:{url:string;onProgress:(v:number)=>void;onNotice:(s:string)=>void;ink:boolean;split:1|2|4;initialProgress:number;onPage?:(page:number,total:number)=>void}){
   const host=useRef<HTMLDivElement>(null);
   const touch=useRef({x:0,y:0,dist:0});
   const [pdf,setPdf]=useState<any>(null);
@@ -250,7 +251,7 @@ function PdfReader({url,onProgress,onNotice,ink,split,initialProgress}:{url:stri
     return()=>{cancelled=true;};
   },[pdf,page,split,zoom]);
 
-  useEffect(()=>{onProgress(total>1?(page-1)/(total-1):0);},[page,total]);
+  useEffect(()=>{onProgress(total>1?(page-1)/(total-1):0);onPage?.(page,total);},[page,total]);
 
   function go(next:number){
     setPage(p=>Math.max(1,Math.min(total||1,p+next)));
@@ -272,7 +273,7 @@ function PdfReader({url,onProgress,onNotice,ink,split,initialProgress}:{url:stri
     </div>
     <div ref={host} className="pdf-page-host"/>
     {loading&&<div className="reader-message">لاپەڕەکە بار دەکرێت…</div>}
-    <div className="zoom-bar"><button onClick={()=>setZoom(z=>Math.max(.6,z-.15))}>−</button><span>{Math.round(zoom*100)}%</span><button onClick={()=>setZoom(z=>Math.min(3,z+.15))}>+</button><button onClick={()=>setZoom(1)}>100%</button></div>
+    <button className="reader-bookmark" onClick={async()=>{if(!selected)return;const st=(await getBookState(selected.id))||{favorite:false,bookmark:false,note:"",progress:0};const next={...st,bookmark:true,bookmarkPage:readerPage,updatedAt:Date.now()};await saveBookState(selected.id,next);setStates(x=>({...x,[selected.id]:next}));setNotice("لاپەڕەکە نیشان کرا.");}}>🔖 نیشانکردنی لاپەڕە</button><div className="zoom-bar"><button onClick={()=>setZoom(z=>Math.max(.6,z-.15))}>−</button><span>{Math.round(zoom*100)}%</span><button onClick={()=>setZoom(z=>Math.min(3,z+.15))}>+</button><button onClick={()=>setZoom(1)}>100%</button></div>
     <div className="page-indicator">{page} / {total||"…"}</div>
   </div>
 }
