@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "android:sync": "cap sync android",
     "content:index": "node scripts/build-content-index.mjs content src/data",
-    "content:validate": "node scripts/validate-library.mjs"
+    "content:validate": "node scripts/validate-library.mjs",
+    "gutenberg:queue": "node scripts/gutenberg-build-queue.mjs",
+    "gutenberg:batch": "node scripts/gutenberg-summary-batches.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",
