@@ -24,13 +24,24 @@ function App(){
   const [states,setStates]=useState<Record<string,Awaited<ReturnType<typeof getBookState>>>>({});
   const [notice,setNotice]=useState("");
   const [fontSize,setFontSize]=useState(19);
-  const [fileUrl,setFileUrl]=useState<string|null>(null);\n  const [readerMode,setReaderMode]=useState<"normal"|"ink">("normal");\n  const [split,setSplit]=useState<1|2|4>(1);\n  const [settingsOpen,setSettingsOpen]=useState(false);\n  const [font,setFont]=useState("system");\n  const [compact,setCompact]=useState(false);\n  const [tab,setTab]=useState<"home"|"library"|"summaries"|"quotes"|"favorites">("home");\n  const [summaries,setSummaries]=useState<Summary[]>([]);\n  const [quotes,setQuotes]=useState<Quote[]>([]);\n  const [authors,setAuthors]=useState<Author[]>([]);
+  const [fileUrl,setFileUrl]=useState<string|null>(null);
+  const [readerMode,setReaderMode]=useState<"normal"|"ink">("normal");
+  const [split,setSplit]=useState<1|2|4>(1);
+  const [settingsOpen,setSettingsOpen]=useState(false);
+  const [font,setFont]=useState("system");
+  const [compact,setCompact]=useState(false);
+  const [tab,setTab]=useState<"home"|"library"|"summaries"|"quotes"|"favorites">("home");
+  const [summaries,setSummaries]=useState<Summary[]>([]);
+  const [quotes,setQuotes]=useState<Quote[]>([]);
+  const [authors,setAuthors]=useState<Author[]>([]);
 
   useEffect(()=>{ getBooks().then(saved=>{ if(saved.length) setBooks(saved); }); getSummaries().then(setSummaries); getQuotes().then(setQuotes); getAuthors().then(setAuthors); },[]);
   useEffect(()=>{ if(!notice)return; const t=setTimeout(()=>setNotice(""),2200); return()=>clearTimeout(t); },[notice]);
 
   const categories=useMemo(()=>["هەموو",...Array.from(new Set(books.map(b=>b.category).filter(Boolean)))],[books]);
-  const favoriteBooks=useMemo(()=>books.filter(b=>states[b.id]?.favorite),[books,states]);\n  const visibleBooks=tab==="favorites"?favoriteBooks:books;\n  const filtered=useMemo(()=>{
+  const favoriteBooks=useMemo(()=>books.filter(b=>states[b.id]?.favorite),[books,states]);
+  const visibleBooks=tab==="favorites"?favoriteBooks:books;
+  const filtered=useMemo(()=>{
     const q=query.trim().toLocaleLowerCase();
     return visibleBooks.filter(b=>(category==="هەموو"||b.category===category)&&(!q||[b.title,b.author,b.category,b.summary,b.summaryKu,b.tags?.join(" ")].filter(Boolean).join(" ").toLocaleLowerCase().includes(q)));
   },[visibleBooks,query,category]);
@@ -104,7 +115,7 @@ function ReaderContent({book,url,fontSize,onProgress,onNotice,ink,split}:{book:B
   if(book.format==="pdf"&&url)return <PdfReader url={url} onProgress={onProgress} onNotice={onNotice} ink={ink} split={split}/>;
   if(book.format==="epub"&&url)return <EpubReader url={url} onProgress={onProgress} onNotice={onNotice}/>;
   const text=book.summaryKu||book.summary||"ئەم کتێبە بۆ خوێندنەوەی ئۆفلاین ئامادەیە.";
-  return <div className="text-reader" ref={ref} style={{fontSize}} onScroll={e=>{const el=e.currentTarget;onProgress(el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight));}}><h1>{book.title}</h1><p>{text}</p>{book.note&&<p>{book.note}</p>}</div>
+  return <div className="text-reader" ref={ref} style={{fontSize}} onScroll={e=>{const el=e.currentTarget;onProgress(el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight));}}><h1>{book.title}</h1><p>{text}</p></div>
 }
 function PdfReader({url,onProgress,onNotice,ink,split}:{url:string;onProgress:(v:number)=>void;onNotice:(s:string)=>void;ink:boolean;split:1|2|4}){
   const host=useRef<HTMLDivElement>(null);
