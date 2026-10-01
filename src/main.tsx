@@ -73,7 +73,11 @@ function App(){
   }
 
   useEffect(()=>{getNotes().then(setNotes).catch(()=>{}); getHighlights().then(setHighlights).catch(()=>{});},[]);
-  useEffect(()=>{\n    const bb=(bundledBooks as Book[]); const bs=(bundledSummaries as Summary[]); const bq=(bundledQuotes as Quote[]); const ba=(bundledAuthors as Author[]);\n    setBooks(prev=>prev.length>3?prev:[...bb,...prev]); setSummaries(bs); setQuotes(bq); setAuthors(ba);\n    getBooks().then(saved=>{ if(saved.length) setBooks(saved); }); getSummaries().then(saved=>{if(saved.length)setSummaries(saved);}); getQuotes().then(saved=>{if(saved.length)setQuotes(saved);}); getAuthors().then(saved=>{if(saved.length)setAuthors(saved);});\n  },[]);
+  useEffect(()=>{
+    const bb=(bundledBooks as Book[]); const bs=(bundledSummaries as Summary[]); const bq=(bundledQuotes as Quote[]); const ba=(bundledAuthors as Author[]);
+    setBooks(prev=>prev.length>3?prev:[...bb,...prev]); setSummaries(bs); setQuotes(bq); setAuthors(ba);
+    getBooks().then(saved=>{ if(saved.length) setBooks(saved); }); getSummaries().then(saved=>{if(saved.length)setSummaries(saved);}); getQuotes().then(saved=>{if(saved.length)setQuotes(saved);}); getAuthors().then(saved=>{if(saved.length)setAuthors(saved);});
+  },[]);
   useEffect(()=>{
     const q=query.trim();
     let cancelled=false;
