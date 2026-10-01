@@ -55,8 +55,9 @@ function App(){
   async function persistNote(note: Note){
     await saveNote(note);
     setNotes(await getNotes());
-    setNoteTitle("");
-    setNoteDraft("");
+    setNoteTitle(note.title);
+    setNoteDraft(note.body);
+    setNoteBookId(note.bookId);
     setActiveNoteId(note.id);
     setNotice("تێبینی بە ئۆفلاین پاشەکەوت کرا ✓");
   }
