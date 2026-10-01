@@ -43,3 +43,5 @@
 .pdf-page-wrap .textLayer{pointer-events:auto}
 .pdf-page-wrap .textLayer span{user-select:text;-webkit-user-select:text}
 .pdf-page-reader .pdf-page{flex:none}
+
+.page-jump{display:flex;align-items:center;gap:5px;font-size:12px}.page-jump input{width:58px;border:0;border-radius:8px;padding:6px;text-align:center;direction:ltr}.highlight-item{display:flex;align-items:center;gap:8px;width:100%;border:1px solid #e2e8f0;background:#fff;border-radius:10px;padding:9px;text-align:right;cursor:pointer}.highlight-item small{opacity:.6;margin-inline-start:auto}.notebook-highlights{display:grid;gap:7px;padding:10px 16px;max-height:180px;overflow:auto}.dark .highlight-item{background:#0f172a;color:#e5e7eb;border-color:#334155}.reader-foot{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.reader-foot .reader-bookmark{margin:0}
