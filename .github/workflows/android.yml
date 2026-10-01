@@ -11,14 +11,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+          cache: false
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
       - run: npm install
       - run: npm run build
-      - run: npx cap add android
+      - run: rm -rf android && npx cap add android
       - run: npx cap sync android
       - run: chmod +x android/gradlew
       - run: cd android && ./gradlew assembleDebug
