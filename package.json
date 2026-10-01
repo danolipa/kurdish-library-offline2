@@ -25,5 +25,9 @@
   },
   "overrides": {
     "baseline-browser-mapping": "2.11.26"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9"
   }
 }
