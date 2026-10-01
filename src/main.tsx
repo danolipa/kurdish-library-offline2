@@ -35,7 +35,7 @@ function App(){
   const [quotes,setQuotes]=useState<Quote[]>([]);
   const [authors,setAuthors]=useState<Author[]>([]);
   const [detailsOpen,setDetailsOpen]=useState(false);
-  const [bookText,setBookText]=useState<Record<string,string>>({});
+  
 
   useEffect(()=>{ getBooks().then(saved=>{ if(saved.length) setBooks(saved); }); getSummaries().then(setSummaries); getQuotes().then(setQuotes); getAuthors().then(setAuthors); },[]);
   useEffect(()=>{ if(!notice)return; const t=setTimeout(()=>setNotice(""),2200); return()=>clearTimeout(t); },[notice]);
@@ -56,7 +56,7 @@ function App(){
     setStates(x=>({...x,[book.id]:s}));
     if(book.source==="import"){
       const blob=await getBookFile(book.id);
-      if(blob) { setFileUrl(URL.createObjectURL(blob)); if(book.format==="txt"||book.format==="html"){ const text=await blob.text(); setBookText(x=>({...x,[book.id]:text.replace(/<[^>]+>/g," ")})); (window as any).__kurdishLibraryText={...(window as any).__kurdishLibraryText,[book.id]:text.replace(/<[^>]+>/g," ")}; } }
+      if(blob) { setFileUrl(URL.createObjectURL(blob)); if(book.format==="txt"||book.format==="html"){ const text=await blob.text(); (window as any).__kurdishLibraryText={...(window as any).__kurdishLibraryText,[book.id]:text.replace(/<[^>]+>/g," ")}; } }
     }
   }
   function closeReader(){ if(fileUrl) URL.revokeObjectURL(fileUrl); setFileUrl(null); setSelected(null); }
