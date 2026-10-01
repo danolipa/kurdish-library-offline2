@@ -62,3 +62,6 @@
 .eink .hero{background:#e9e9e4!important;color:#111!important;box-shadow:none!important}
 .eink .cover{box-shadow:none!important}
 .eink .highlight-item{background:#f4f4f0!important;color:#111!important;border-color:#777!important}
+
+
+.pager{display:flex;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap;margin:18px 0 28px}.pager button{min-width:38px;border:1px solid var(--border,#d9dee7);background:var(--panel,#fff);color:inherit;border-radius:9px;padding:7px 10px}.pager button.active{font-weight:800;outline:2px solid var(--accent,#4f46e5)}.pager button:disabled{opacity:.4}
