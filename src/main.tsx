@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import * as pdfjsLib from "pdfjs-dist";
+import { TextLayer } from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import ePub from "epubjs";
 import type { Book, Quote, Summary, Author, Highlight, Note } from "./types";
@@ -232,8 +233,23 @@ function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage}:{u
         if(cancelled)return;
         const root=host.current!;
         root.replaceChildren();
-        if(split===1){root.appendChild(canvas);}
-        else{
+        if(split===1){
+          const pageWrap=document.createElement("div");
+          pageWrap.className="pdf-page-wrap";
+          pageWrap.style.width=`${viewport.width}px`;
+          pageWrap.style.height=`${viewport.height}px`;
+          pageWrap.appendChild(canvas);
+          try{
+            const textContent=await p.getTextContent();
+            const layer=document.createElement("div");
+            layer.className="textLayer";
+            layer.style.setProperty("--scale-factor",String(viewport.scale));
+            pageWrap.appendChild(layer);
+            const textLayer=new TextLayer({textContentSource:textContent,viewport,container:layer});
+            await textLayer.render();
+          }catch{}
+          root.appendChild(pageWrap);
+        } else {
           const cols=2, rows=split===2?1:2;
           const partW=Math.floor(canvas.width/cols), partH=Math.floor(canvas.height/rows);
           for(let part=0;part<split;part++){
