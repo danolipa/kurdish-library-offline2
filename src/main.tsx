@@ -332,38 +332,45 @@ function EpubReader({url,onProgress,onNotice}:{url:string;onProgress:(v:number)=
 }
 function MediaPlayer(){
   const mediaRef=useRef<HTMLVideoElement>(null);
-  const [src,setSrc]=useState<string|null>(null);
-  const [name,setName]=useState("");
+  const [items,setItems]=useState<{url:string;name:string;isVideo:boolean}[]>([]);
+  const [index,setIndex]=useState(0);
   const [playing,setPlaying]=useState(false);
   const [speed,setSpeed]=useState(1);
   const [muted,setMuted]=useState(false);
+  const [volume,setVolume]=useState(1);
   const [time,setTime]=useState(0);
   const [duration,setDuration]=useState(0);
-  const [isVideo,setIsVideo]=useState(true);
+  const current=items[index];
 
   function pick(e:React.ChangeEvent<HTMLInputElement>){
-    const f=e.target.files?.[0]; if(!f)return;
-    if(src)URL.revokeObjectURL(src);
-    setSrc(URL.createObjectURL(f)); setName(f.name); setIsVideo(f.type.startsWith("video/")); setPlaying(false); setTime(0); setDuration(0);
+    const files=Array.from(e.target.files||[]);
+    if(!files.length)return;
+    const next=files.map(f=>({url:URL.createObjectURL(f),name:f.name,isVideo:f.type.startsWith("video/")}));
+    items.forEach(x=>URL.revokeObjectURL(x.url));
+    setItems(next);setIndex(0);setPlaying(false);setTime(0);setDuration(0);
   }
   function seek(delta:number){const el=mediaRef.current;if(el)el.currentTime=Math.max(0,Math.min(el.duration||0,el.currentTime+delta));}
-  function togglePlay(){const el=mediaRef.current;if(!el)return;if(el.paused){el.play();setPlaying(true);}else{el.pause();setPlaying(false);}}
+  function togglePlay(){const el=mediaRef.current;if(!el)return;if(el.paused){el.play().catch(()=>{});setPlaying(true);}else{el.pause();setPlaying(false);}}
   function changeSpeed(){const next=speed>=2?0.5:speed+0.5;setSpeed(next);if(mediaRef.current)mediaRef.current.playbackRate=next;}
   function toggleMute(){const el=mediaRef.current;if(!el)return;el.muted=!el.muted;setMuted(el.muted);}
+  function changeVolume(v:number){setVolume(v);if(mediaRef.current)mediaRef.current.volume=v;}
+  function move(delta:number){if(!items.length)return;setIndex(i=>Math.max(0,Math.min(items.length-1,i+delta)));setTime(0);setPlaying(false);}
   function fullscreen(){mediaRef.current?.requestFullscreen?.();}
 
-  return <section className="media-panel"><h2>🎬 میدیا پلەیەر</h2><p>فایلەکانی دەنگ و ڤیدیۆ لە ناوخۆی ئامێرەکەت بە شێوەی ئۆفلاین پەخش بکە.</p>
-    <input type="file" accept="audio/*,video/*" onChange={pick}/>
-    <div className="media-name">{name||"هیچ فایلێک هەڵنەبژێردراوە"}</div>
-    {src&&<video ref={mediaRef} className={`media-video ${isVideo?"":"audio-only"}`} src={src} playsInline onTimeUpdate={e=>setTime(e.currentTarget.currentTime)} onLoadedMetadata={e=>setDuration(e.currentTarget.duration)} onPlay={()=>setPlaying(true)} onPause={()=>setPlaying(false)} controls={false}/>}
-    <input className="media-progress" type="range" min="0" max={duration||0.1} step="0.1" value={Math.min(time,duration||0.1)} onChange={e=>{const v=Number(e.target.value);setTime(v);if(mediaRef.current)mediaRef.current.currentTime=v}} disabled={!src}/>
+  return <section className="media-panel"><h2>🎬 میدیا پلەیەر</h2><p>دەنگ و ڤیدیۆ بە شێوەی ئۆفلاین پەخش بکە.</p>
+    <input type="file" accept="audio/*,video/*" multiple onChange={pick}/>
+    <div className="media-name">{current?current.name:"هیچ فایلێک هەڵنەبژێردراوە"}</div>
+    {current&&<video key={current.url} ref={mediaRef} className={`media-video ${current.isVideo?"":"audio-only"}`} src={current.url} playsInline onTimeUpdate={e=>setTime(e.currentTarget.currentTime)} onLoadedMetadata={e=>{setDuration(e.currentTarget.duration);e.currentTarget.playbackRate=speed;e.currentTarget.volume=volume}} onPlay={()=>setPlaying(true)} onPause={()=>setPlaying(false)} onEnded={()=>{if(index<items.length-1){setIndex(i=>i+1);setPlaying(true)}}} controls={false}/>}
+    <input className="media-progress" type="range" min="0" max={duration||0.1} step="0.1" value={Math.min(time,duration||0.1)} onChange={e=>{const v=Number(e.target.value);setTime(v);if(mediaRef.current)mediaRef.current.currentTime=v}} disabled={!current}/>
     <div className="media-times"><span>{formatTime(time)}</span><span>{formatTime(duration)}</span></div>
     <div className="media-actions">
-      <button onClick={()=>seek(-10)} disabled={!src}>⏮︎ 10s</button><button onClick={togglePlay} disabled={!src}>{playing?"⏸︎":"▶︎"}</button><button onClick={()=>seek(10)} disabled={!src}>10s ⏭︎</button>
-      <button onClick={changeSpeed} disabled={!src}>{speed}×</button><button onClick={toggleMute} disabled={!src}>{muted?"🔇":"🔊"}</button><button onClick={fullscreen} disabled={!src}>⛶</button>
+      <button onClick={()=>move(-1)} disabled={!current||index===0}>⏮︎</button><button onClick={()=>seek(-10)} disabled={!current}>−10s</button><button onClick={togglePlay} disabled={!current}>{playing?"⏸︎":"▶︎"}</button><button onClick={()=>seek(10)} disabled={!current}>+10s</button><button onClick={()=>move(1)} disabled={!current||index===items.length-1}>⏭︎</button>
+      <button onClick={changeSpeed} disabled={!current}>{speed}×</button><button onClick={toggleMute} disabled={!current}>{muted?"🔇":"🔊"}</button><button onClick={fullscreen} disabled={!current}>⛶</button>
     </div>
-    <small>پشتیوانییە سەرەتایییەکان: play/pause، پاش/پێش ١٠ چرکە، خێرایی، mute، seek و fullscreen.</small>
+    <label className="media-volume">🔉 <input type="range" min="0" max="1" step="0.05" value={volume} onChange={e=>changeVolume(Number(e.target.value))}/></label>
+    {items.length>1&&<div className="media-playlist">{items.map((x,i)=><button key={x.url} className={i===index?"active":""} onClick={()=>{setIndex(i);setTime(0);setPlaying(false)}}>{i+1}. {x.name}</button>)}</div>}
   </section>
 }
+
 function formatTime(value:number){if(!Number.isFinite(value))return "00:00";const m=Math.floor(value/60),s=Math.floor(value%60);return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`}
 createRoot(document.getElementById("root")!).render(<App/>);
