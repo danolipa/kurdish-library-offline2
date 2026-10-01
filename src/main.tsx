@@ -190,7 +190,7 @@ function ReaderContent({book,url,fontSize,onProgress,onNotice,ink,split,initialP
   return <div className="text-reader" ref={ref} style={{fontSize}} onScroll={e=>{const el=e.currentTarget;onProgress(el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight));}}><h1>{book.title}</h1><p>{text}</p></div>
 }
 
-function PdfReader({url,onProgress,onNotice,ink,split,initialProgress}:{url:string;onProgress:(v:number)=>void;onNotice:(s:string)=>void;ink:boolean;split:1|2|4;initialProgress:number;onPage?:(page:number,total:number)=>void}){
+function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage}:{url:string;onProgress:(v:number)=>void;onNotice:(s:string)=>void;ink:boolean;split:1|2|4;initialProgress:number;onPage?:(page:number,total:number)=>void}){
   const host=useRef<HTMLDivElement>(null);
   const touch=useRef({x:0,y:0,dist:0});
   const [pdf,setPdf]=useState<any>(null);
@@ -273,7 +273,7 @@ function PdfReader({url,onProgress,onNotice,ink,split,initialProgress}:{url:stri
     </div>
     <div ref={host} className="pdf-page-host"/>
     {loading&&<div className="reader-message">لاپەڕەکە بار دەکرێت…</div>}
-    <button className="reader-bookmark" onClick={async()=>{if(!selected)return;const st=(await getBookState(selected.id))||{favorite:false,bookmark:false,note:"",progress:0};const next={...st,bookmark:true,bookmarkPage:readerPage,updatedAt:Date.now()};await saveBookState(selected.id,next);setStates(x=>({...x,[selected.id]:next}));setNotice("لاپەڕەکە نیشان کرا.");}}>🔖 نیشانکردنی لاپەڕە</button><div className="zoom-bar"><button onClick={()=>setZoom(z=>Math.max(.6,z-.15))}>−</button><span>{Math.round(zoom*100)}%</span><button onClick={()=>setZoom(z=>Math.min(3,z+.15))}>+</button><button onClick={()=>setZoom(1)}>100%</button></div>
+    <div className="zoom-bar"><button onClick={()=>setZoom(z=>Math.max(.6,z-.15))}>−</button><span>{Math.round(zoom*100)}%</span><button onClick={()=>setZoom(z=>Math.min(3,z+.15))}>+</button><button onClick={()=>setZoom(1)}>100%</button></div>
     <div className="page-indicator">{page} / {total||"…"}</div>
   </div>
 }
