@@ -96,6 +96,13 @@ function App(){
   useEffect(()=>{ if(!notice)return; const t=setTimeout(()=>setNotice(""),2200); return()=>clearTimeout(t); },[notice]);
   useEffect(()=>{setLibraryPage(1);},[query,category,tab,viewMode]);
   useEffect(()=>{setSummaryPage(1);},[summaries.length]);
+  useEffect(()=>{
+    try{
+      const raw=localStorage.getItem("kurdish-library-settings");
+      if(raw){const s=JSON.parse(raw);if(["light","dark","sepia","eink"].includes(s.theme))setTheme(s.theme);if(["system","serif","sans"].includes(s.font))setFont(s.font);if(Number.isFinite(s.fontSize))setFontSize(Math.max(14,Math.min(30,Number(s.fontSize))));if(typeof s.compact==="boolean")setCompact(s.compact);if(["grid","shelf","list","small"].includes(s.viewMode))setViewMode(s.viewMode);}
+    }catch{}
+  },[]);
+  useEffect(()=>{try{localStorage.setItem("kurdish-library-settings",JSON.stringify({theme,font,fontSize,compact,viewMode}));}catch{}},[theme,font,fontSize,compact,viewMode]);
 
   const categories=useMemo(()=>["هەموو",...Array.from(new Set(books.map(b=>b.category).filter(Boolean)))],[books]);
   const favoriteBooks=useMemo(()=>books.filter(b=>states[b.id]?.favorite),[books,states]);
