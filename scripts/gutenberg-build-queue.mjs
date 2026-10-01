@@ -26,7 +26,16 @@ const csv = await (await fetch(catalogUrl)).text();
 const catalog = parseCsv(csv);
 const candidates = catalog
   .filter(x => x["Type"] === "Text")
-  .sort((a,b) => Number(a["Book ID"] || 0) - Number(b["Book ID"] || 0))
+  .sort((a,b) => {
+    const priority = new Map([
+      [1342, 1], [84, 2], [2701, 3], [1661, 4], [174, 5],
+      [98, 6], [1184, 7], [1232, 8], [76, 9], [1080, 10],
+      [1998, 11], [150, 12], [28054, 13], [345, 14], [16328, 15],
+      [11, 16], [5200, 17], [43, 18], [2600, 19], [36, 20]
+    ]);
+    return (priority.get(Number(a["Book ID"])) ?? 100000 + Number(a["Book ID"] || 0))
+      - (priority.get(Number(b["Book ID"])) ?? 100000 + Number(b["Book ID"] || 0));
+  })
   .slice(0, LIMIT)
   .map((x, i) => ({
     order: i + 1,
