@@ -5,6 +5,10 @@ import { TextLayer } from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import ePub from "epubjs";
 import type { Book, Quote, Summary, Author, Highlight, Note } from "./types";
+import bundledBooks from "./data/library.json";
+import bundledSummaries from "./data/summaries.json";
+import bundledQuotes from "./data/quotes.json";
+import bundledAuthors from "./data/authors.json";
 import { getBookFile, getBookState, getBooks, getSummaries, getQuotes, getAuthors, saveBook, saveBookState, saveProgress, saveSummaries, saveQuotes, saveAuthors, getExtractedText, saveExtractedText, getHighlights, saveHighlight, deleteHighlight, getNotes, saveNote, deleteNote } from "./storage";
 import "./styles.css";
 
@@ -68,7 +72,7 @@ function App(){
   }
 
   useEffect(()=>{getNotes().then(setNotes).catch(()=>{}); getHighlights().then(setHighlights).catch(()=>{});},[]);
-  useEffect(()=>{ getBooks().then(saved=>{ if(saved.length) setBooks(saved); }); getSummaries().then(setSummaries); getQuotes().then(setQuotes); getAuthors().then(setAuthors); },[]);
+  useEffect(()=>{\n    const bb=(bundledBooks as Book[]); const bs=(bundledSummaries as Summary[]); const bq=(bundledQuotes as Quote[]); const ba=(bundledAuthors as Author[]);\n    setBooks(prev=>prev.length>3?prev:[...bb,...prev]); setSummaries(bs); setQuotes(bq); setAuthors(ba);\n    getBooks().then(saved=>{ if(saved.length) setBooks(saved); }); getSummaries().then(saved=>{if(saved.length)setSummaries(saved);}); getQuotes().then(saved=>{if(saved.length)setQuotes(saved);}); getAuthors().then(saved=>{if(saved.length)setAuthors(saved);});\n  },[]);
   useEffect(()=>{ books.forEach(b=>{ if(!extractedText[b.id]) getExtractedText(b.id).then(t=>{if(t)setExtractedText(x=>({...x,[b.id]:t}))}); }); },[books]);
   useEffect(()=>{ if(!notice)return; const t=setTimeout(()=>setNotice(""),2200); return()=>clearTimeout(t); },[notice]);
 
