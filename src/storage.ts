@@ -1,7 +1,7 @@
-import type { Book } from "./types";
+import type { Book, BookState } from "./types";
 
 const DB_NAME = "kurdish-library";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -11,6 +11,7 @@ function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains("books")) db.createObjectStore("books", { keyPath: "id" });
       if (!db.objectStoreNames.contains("files")) db.createObjectStore("files");
       if (!db.objectStoreNames.contains("progress")) db.createObjectStore("progress");
+      if (!db.objectStoreNames.contains("states")) db.createObjectStore("states");
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -51,24 +52,34 @@ export async function getBookFile(id: string): Promise<Blob | undefined> {
   return file;
 }
 
-export async function saveProgress(id: string, value: number) {
+export async function getBookState(id: string): Promise<BookState> {
+  const db = await openDb();
+  const state = await new Promise<BookState | undefined>((resolve, reject) => {
+    const request = db.transaction("states").objectStore("states").get(id);
+    request.onsuccess = () => resolve(request.result as BookState | undefined);
+    request.onerror = () => reject(request.error);
+  });
+  db.close();
+  return state ?? { favorite: false, bookmark: false, note: "", progress: 0 };
+}
+
+export async function saveBookState(id: string, patch: Partial<BookState>) {
+  const current = await getBookState(id);
+  const next = { ...current, ...patch };
   const db = await openDb();
   await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction("progress", "readwrite");
-    tx.objectStore("progress").put(value, id);
+    const tx = db.transaction("states", "readwrite");
+    tx.objectStore("states").put(next, id);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
   db.close();
 }
 
+export async function saveProgress(id: string, value: number) {
+  await saveBookState(id, { progress: Math.max(0, Math.min(1, value)) });
+}
+
 export async function getProgress(id: string): Promise<number> {
-  const db = await openDb();
-  const value = await new Promise<number>((resolve, reject) => {
-    const request = db.transaction("progress").objectStore("progress").get(id);
-    request.onsuccess = () => resolve(typeof request.result === "number" ? request.result : 0);
-    request.onerror = () => reject(request.error);
-  });
-  db.close();
-  return value;
+  return (await getBookState(id)).progress;
 }
