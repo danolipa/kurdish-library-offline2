@@ -109,10 +109,15 @@ function App(){
   }
   async function addHighlight(){
     if(!selected) return;
-    const text=window.getSelection()?.toString().trim() || prompt("دەقی highlight بنووسە")?.trim();
+    const selection=window.getSelection();
+    const text=selection?.toString().trim() || prompt("دەقی highlight بنووسە")?.trim();
     if(!text) return;
-    const item:Highlight={id:`hl-${Date.now()}`,bookId:selected.id,text,color:"yellow",createdAt:Date.now()};
-    await saveHighlight(item); setHighlights(x=>[item,...x]); window.getSelection()?.removeAllRanges(); setNotice("Highlight پاشەکەوت کرا ✓");
+    const page=readerPage>0?readerPage:undefined;
+    const noteText=window.prompt("تێبینی بۆ ئەم highlight ـە (ئاختیاری):","")?.trim() || undefined;
+    const item:Highlight={id:`hl-${Date.now()}`,bookId:selected.id,page,text,note:noteText,color:"yellow",createdAt:Date.now()};
+    await saveHighlight(item); setHighlights(x=>[item,...x]);
+    selection?.removeAllRanges();
+    setNotice(page? `Highlight ـی لاپەڕەی ${page} پاشەکەوت کرا ✓` : "Highlight پاشەکەوت کرا ✓");
   }
   async function removeHighlight(id:string){await deleteHighlight(id);setHighlights(x=>x.filter(h=>h.id!==id));}
   async function runOcr(){
