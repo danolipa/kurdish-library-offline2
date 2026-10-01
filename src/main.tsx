@@ -35,6 +35,7 @@ function App(){
   const [quotes,setQuotes]=useState<Quote[]>([]);
   const [authors,setAuthors]=useState<Author[]>([]);
   const [detailsOpen,setDetailsOpen]=useState(false);
+  const [extractedText,setExtractedText]=useState<Record<string,string>>({});
   
 
   useEffect(()=>{ getBooks().then(saved=>{ if(saved.length) setBooks(saved); }); getSummaries().then(setSummaries); getQuotes().then(setQuotes); getAuthors().then(setAuthors); },[]);
@@ -45,7 +46,7 @@ function App(){
   const visibleBooks=tab==="favorites"?favoriteBooks:books;
   const filtered=useMemo(()=>{
     const q=query.trim().toLocaleLowerCase();
-    return visibleBooks.filter(b=>(category==="هەموو"||b.category===category)&&(!q||[b.title,b.author,b.category,b.summary,b.summaryKu,b.tags?.join(" ")].filter(Boolean).join(" ").toLocaleLowerCase().includes(q)));
+    return visibleBooks.filter(b=>(category==="هەموو"||b.category===category)&&(!q||[b.title,b.author,b.category,b.summary,b.summaryKu,b.tags?.join(" "),extractedText[b.id]].filter(Boolean).join(" ").toLocaleLowerCase().includes(q)));
   },[visibleBooks,query,category]);
 
   async function openBook(book:Book){
@@ -56,7 +57,7 @@ function App(){
     setStates(x=>({...x,[book.id]:s}));
     if(book.source==="import"){
       const blob=await getBookFile(book.id);
-      if(blob) { setFileUrl(URL.createObjectURL(blob)); if(book.format==="txt"||book.format==="html"){ const text=await blob.text(); (window as any).__kurdishLibraryText={...(window as any).__kurdishLibraryText,[book.id]:text.replace(/<[^>]+>/g," ")}; } }
+      if(blob) { setFileUrl(URL.createObjectURL(blob)); if(book.format==="pdf"){ extractPdfText(blob,book.id,setExtractedText,setNotice); } if(book.format==="txt"||book.format==="html"){ const text=await blob.text(); (window as any).__kurdishLibraryText={...(window as any).__kurdishLibraryText,[book.id]:text.replace(/<[^>]+>/g," ")}; } }
     }
   }
   function closeReader(){ if(fileUrl) URL.revokeObjectURL(fileUrl); setFileUrl(null); setSelected(null); }
@@ -112,6 +113,24 @@ function App(){
       </div></div>}
       {settingsOpen&&<div className="modal" onClick={()=>setSettingsOpen(false)}><div className="settings" onClick={e=>e.stopPropagation()}><div className="reader-head"><div><strong>⚙️ ڕێکخستنەکان</strong><small>ڕێکخستنی خوێندنەوە و شێوازی دەرکەوتن</small></div><button onClick={()=>setSettingsOpen(false)}>✕</button></div><div className="settings-grid"><label>شێوازی ڕووکار<select value={theme} onChange={e=>setTheme(e.target.value as "light"|"dark"|"sepia")}><option value="light">☀️ ڕووناک</option><option value="dark">🌙 تاریک</option><option value="sepia">📜 سێپیا</option></select></label><label>جۆری فۆنت<select value={font} onChange={e=>setFont(e.target.value)}><option value="system">سیستەم</option><option value="serif">Serif</option><option value="sans">Sans</option></select></label><label>قەبارەی نووسین: {fontSize}px<input type="range" min="14" max="30" value={fontSize} onChange={e=>setFontSize(Number(e.target.value))}/></label><label><span>لیستی کورتتر</span><input type="checkbox" checked={compact} onChange={e=>setCompact(e.target.checked)}/></label><div className="settings-section"><strong>📚 ئۆفلاین</strong><p>کتێبە هاوردەکراوەکان و پێشکەوتنی خوێندنەوە لە ناوخۆی ئامێرەکەت هەڵدەگیرێن.</p></div><div className="settings-section"><strong>🖋️ Ink Reader</strong><p>شێوازی grayscale بۆ خوێندنەوەی سادە و Split ـی 2× و 4× بۆ دابەشکردنی لاپەڕەی PDF بەکار دێت.</p></div></div></div></div>}
     </main>{notice&&<div className="toast">{notice}</div>}</div>
+}
+
+
+async function extractPdfText(blob:Blob,id:string,setText:React.Dispatch<React.SetStateAction<Record<string,string>>>,notice:(s:string)=>void){
+  try{
+    const pdf=await pdfjsLib.getDocument({data:await blob.arrayBuffer()}).promise;
+    const chunks:string[]=[];
+    for(let n=1;n<=pdf.numPages;n++){
+      const page=await pdf.getPage(n);
+      const content=await page.getTextContent();
+      chunks.push(content.items.map((x:any)=>x.str||"").join(" "));
+    }
+    setText(prev=>({...prev,[id]:chunks.join("\n\n")}));
+    notice("دەقی PDF بۆ گەڕان ئامادە کرا ✓");
+    await pdf.destroy();
+  }catch{
+    notice("PDF دەقی نەهێنراوە؛ OCR لە قۆناغی دواتردا زیاد دەکرێت");
+  }
 }
 
 function bookTextFor(book:Book){ return (window as any).__kurdishLibraryText?.[book.id] || ""; }
