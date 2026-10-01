@@ -49,6 +49,7 @@ function App(){
   const [extractedText,setExtractedText]=useState<Record<string,string>>({});
   const [ocrBusy,setOcrBusy]=useState(false);
   const [highlights,setHighlights]=useState<Highlight[]>([]);
+  const [readerJump,setReaderJump]=useState<number|undefined>(undefined);
   
 
   async function persistNote(note: Note){
@@ -65,7 +66,7 @@ function App(){
     setNotice("تێبینی سڕایەوە.");
   }
 
-  useEffect(()=>{getNotes().then(setNotes).catch(()=>{});},[]);
+  useEffect(()=>{getNotes().then(setNotes).catch(()=>{}); getHighlights().then(setHighlights).catch(()=>{});},[]);
   useEffect(()=>{ getBooks().then(saved=>{ if(saved.length) setBooks(saved); }); getSummaries().then(setSummaries); getQuotes().then(setQuotes); getAuthors().then(setAuthors); },[]);
   useEffect(()=>{ books.forEach(b=>{ if(!extractedText[b.id]) getExtractedText(b.id).then(t=>{if(t)setExtractedText(x=>({...x,[b.id]:t}))}); }); },[books]);
   useEffect(()=>{ if(!notice)return; const t=setTimeout(()=>setNotice(""),2200); return()=>clearTimeout(t); },[notice]);
@@ -87,7 +88,7 @@ function App(){
     setStates(x=>({...x,[book.id]:s}));
     if(book.source==="import"){
       const blob=await getBookFile(book.id);
-      if(blob) { setFileUrl(URL.createObjectURL(blob)); if(book.format==="pdf"){ extractPdfText(blob,book.id,setExtractedText,setNotice); } if(book.format==="txt"||book.format==="html"){ const text=await blob.text(); (window as any).__kurdishLibraryText={...(window as any).__kurdishLibraryText,[book.id]:text.replace(/<[^>]+>/g," ")}; } }
+      if(blob) { setFileUrl(URL.createObjectURL(blob)); if(book.format==="pdf"){ extractPdfText(blob,book.id,setExtractedText,setNotice); } if(book.format==="txt"||book.format==="html"){ const raw=await blob.text(); const text=book.format==="html"?raw.replace(/<[^>]+>/g," "):raw; (window as any).__kurdishLibraryText={...(window as any).__kurdishLibraryText,[book.id]:text}; await saveExtractedText(book.id,text); setExtractedText(x=>({...x,[book.id]:text})); } }
     }
   }
   function closeReader(){ if(fileUrl) URL.revokeObjectURL(fileUrl); setFileUrl(null); setSelected(null); }
@@ -95,7 +96,7 @@ function App(){
     if(!selected)return;
     const current=states[selected.id] ?? await getBookState(selected.id);
     const next=!current[key];
-    await saveBookState(selected.id,{[key]:next});
+    await saveBookState(selected.id,{[key]:next,...(key==="bookmark"&&next?{bookmarkPage:readerPage}:{})});
     setStates(x=>({...x,[selected.id]:{...current,[key]:next}}));
     setNotice(next ? "پاشەکەوت کرا ✓" : "لابرا");
   }
@@ -202,15 +203,15 @@ async function extractPdfText(blob:Blob,id:string,setText:React.Dispatch<React.S
 
 function bookTextFor(book:Book){ return (window as any).__kurdishLibraryText?.[book.id] || ""; }
 
-function ReaderContent({book,url,fontSize,onProgress,onNotice,ink,split,initialProgress,onPage}:{book:Book;url:string|null;fontSize:number;onProgress:(v:number)=>void;onNotice:(s:string)=>void;ink:boolean;split:1|2|4;initialProgress?:number;onPage?:(page:number,total:number)=>void}){
+function ReaderContent({book,url,fontSize,onProgress,onNotice,ink,split,initialProgress,onPage,jumpPage}:{book:Book;url:string|null;fontSize:number;onProgress:(v:number)=>void;onNotice:(s:string)=>void;ink:boolean;split:1|2|4;initialProgress?:number;onPage?:(page:number,total:number)=>void;jumpPage?:number}){
   const ref=useRef<HTMLDivElement>(null);
-  if(book.format==="pdf"&&url)return <PdfReader url={url} onProgress={onProgress} onNotice={onNotice} ink={ink} split={split} initialProgress={initialProgress||0} onPage={onPage}/>;
+  if(book.format==="pdf"&&url)return <PdfReader url={url} onProgress={onProgress} onNotice={onNotice} ink={ink} split={split} initialProgress={initialProgress||0} onPage={onPage} jumpPage={jumpPage}/>;
   if(book.format==="epub"&&url)return <EpubReader url={url} onProgress={onProgress} onNotice={onNotice}/>;
   const text=bookTextFor(book)||book.summaryKu||book.summary||"ئەم کتێبە بۆ خوێندنەوەی ئۆفلاین ئامادەیە.";
   return <div className="text-reader" ref={ref} style={{fontSize}} onScroll={e=>{const el=e.currentTarget;onProgress(el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight));}}><h1>{book.title}</h1><p>{text}</p></div>
 }
 
-function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage}:{url:string;onProgress:(v:number)=>void;onNotice:(s:string)=>void;ink:boolean;split:1|2|4;initialProgress:number;onPage?:(page:number,total:number)=>void}){
+function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage,jumpPage}:{url:string;onProgress:(v:number)=>void;onNotice:(s:string)=>void;ink:boolean;split:1|2|4;initialProgress:number;onPage?:(page:number,total:number)=>void;jumpPage?:number}){
   const host=useRef<HTMLDivElement>(null);
   const touch=useRef({x:0,y:0,dist:0,pinchStart:0,zoomStart:1});
   const [pdf,setPdf]=useState<any>(null);
@@ -288,6 +289,7 @@ function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage}:{u
   },[pdf,page,split,zoom]);
 
   useEffect(()=>{onProgress(total>1?(page-1)/(total-1):0);onPage?.(page,total);},[page,total]);
+  useEffect(()=>{if(jumpPage&&total)setPage(Math.max(1,Math.min(total,jumpPage)));},[jumpPage,total]);
 
   function go(next:number){
     setPage(p=>Math.max(1,Math.min(total||1,p+next)));
@@ -305,10 +307,11 @@ function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage}:{u
     tabIndex={0}>
     <div className="pdf-page-toolbar">
       <button onClick={()=>go(-1)} disabled={page<=1}>‹ پێشوو</button>
-      <span>{page} / {total||"…"}</span>
+      <label className="page-jump">لاپەڕە <input inputMode="numeric" min="1" max={total||1} defaultValue={page} key={page} onKeyDown={e=>{if(e.key==="Enter"){const n=Number((e.currentTarget as HTMLInputElement).value);if(n)setPage(Math.max(1,Math.min(total||1,n)));}}}/></label>
+      <span>/ {total||"…"}</span>
       <button onClick={()=>go(1)} disabled={!total||page>=total}>دواتر ›</button>
     </div>
-    <div ref={host} className="pdf-page-host"/>
+        <div ref={host} className="pdf-page-host"/>
     {loading&&<div className="reader-message">لاپەڕەکە بار دەکرێت…</div>}
     <div className="zoom-bar"><button onClick={()=>setZoom(z=>Math.max(.6,z-.15))}>−</button><span>{Math.round(zoom*100)}%</span><button onClick={()=>setZoom(z=>Math.min(3,z+.15))}>+</button><button onClick={()=>setZoom(1)}>100%</button></div>
     <div className="page-indicator">{page} / {total||"…"}</div>
