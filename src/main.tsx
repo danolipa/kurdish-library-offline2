@@ -143,7 +143,7 @@ function App(){
       for(let n=1;n<=limit;n++){
         const page=await pdf.getPage(n); const viewport=page.getViewport({scale:1.5});
         const canvas=document.createElement("canvas"); canvas.width=viewport.width; canvas.height=viewport.height;
-        await page.render({canvasContext:canvas.getContext("2d")!,viewport}).promise;
+        await page.render({canvasContext:canvas.getContext("2d")!,canvas,viewport}).promise;
         const result=await worker.recognize(canvas); pages.push(result.data.text);
       }
       await worker.terminate(); await pdf.destroy();
@@ -278,7 +278,7 @@ function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage,jum
         canvas.height=Math.ceil(viewport.height);
         const ctx=canvas.getContext("2d");
         if(!ctx)throw new Error("canvas");
-        await p.render({canvasContext:ctx,viewport}).promise;
+        await p.render({canvasContext:ctx,canvas,viewport}).promise;
         if(cancelled)return;
         const root=host.current!;
         root.replaceChildren();
