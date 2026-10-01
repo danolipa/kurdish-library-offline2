@@ -293,16 +293,17 @@ function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage,jum
 
   useEffect(()=>{
     let cancelled=false;
+    let doc:any=null;
     (async()=>{
       try{
-        const doc=await pdfjsLib.getDocument(url).promise;
-        if(cancelled){doc.destroy();return;}
+        doc=await pdfjsLib.getDocument(url).promise;
+        if(cancelled){await doc.destroy();return;}
         setPdf(doc); setTotal(doc.numPages);
         setPage(Math.max(1,Math.min(doc.numPages,Math.floor(initialProgress*Math.max(0,doc.numPages-1))+1)));
         onNotice("PDF ئامادەیە ✓");
       }catch{onNotice("نەتوانرا PDF بکرێتەوە");}
     })();
-    return()=>{cancelled=true;setPdf(null);};
+    return()=>{cancelled=true;setPdf(null);if(doc)void doc.destroy();};
   },[url]);
 
   useEffect(()=>{
