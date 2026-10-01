@@ -12,8 +12,10 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm install
+          registry-url: https://registry.npmjs.org
+      - run: npm ci --no-audit --no-fund
       - run: npm run build
+      - run: npx tsc --noEmit
       - uses: actions/upload-artifact@v4
         with:
           name: web-build
