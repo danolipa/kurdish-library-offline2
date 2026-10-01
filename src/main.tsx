@@ -207,7 +207,7 @@ function ReaderContent({book,url,fontSize,onProgress,onNotice,ink,split,initialP
 
 function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage}:{url:string;onProgress:(v:number)=>void;onNotice:(s:string)=>void;ink:boolean;split:1|2|4;initialProgress:number;onPage?:(page:number,total:number)=>void}){
   const host=useRef<HTMLDivElement>(null);
-  const touch=useRef({x:0,y:0,dist:0});
+  const touch=useRef({x:0,y:0,dist:0,pinchStart:0,zoomStart:1});
   const [pdf,setPdf]=useState<any>(null);
   const [page,setPage]=useState(1);
   const [total,setTotal]=useState(0);
@@ -239,6 +239,7 @@ function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage}:{u
         const viewport=p.getViewport({scale:base});
         const canvas=document.createElement("canvas");
         canvas.className="pdf-page";
+        canvas.style.width=`${viewport.width}px`;canvas.style.height=`${viewport.height}px`;
         canvas.width=Math.ceil(viewport.width);
         canvas.height=Math.ceil(viewport.height);
         const ctx=canvas.getContext("2d");
@@ -286,14 +287,15 @@ function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage}:{u
   function go(next:number){
     setPage(p=>Math.max(1,Math.min(total||1,p+next)));
   }
+  function pinchDistance(e:React.TouchEvent){const a=e.touches[0],b=e.touches[1];return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);}
   function swipe(dx:number,dy:number){
     if(Math.abs(dx)>65 && Math.abs(dx)>Math.abs(dy)*1.15) go(dx<0?1:-1);
   }
 
   return <div className={`document-reader pdf-page-reader ${ink?"ink":""}`}
-    onTouchStart={e=>{const a=e.touches[0];touch.current={x:a.clientX,y:a.clientY,dist:e.touches.length===2?1:0}}}
-    onTouchMove={e=>{if(e.touches.length===2)touch.current.dist=1}}
-    onTouchEnd={e=>{const a=e.changedTouches[0];if(touch.current.dist===0)swipe(a.clientX-touch.current.x,a.clientY-touch.current.y);touch.current.dist=0}}
+    onTouchStart={e=>{const a=e.touches[0];if(e.touches.length===2){touch.current.pinchStart=pinchDistance(e);touch.current.zoomStart=zoom;touch.current.dist=1;}else{touch.current={...touch.current,x:a.clientX,y:a.clientY,dist:0}}}}
+    onTouchMove={e=>{if(e.touches.length===2){const d=pinchDistance(e);if(touch.current.pinchStart>0){const next=Math.max(.6,Math.min(4,touch.current.zoomStart*(d/touch.current.pinchStart)));setZoom(next);}}}}
+    onTouchEnd={e=>{const a=e.changedTouches[0];if(touch.current.dist===0)swipe(a.clientX-touch.current.x,a.clientY-touch.current.y);touch.current.dist=0;touch.current.pinchStart=0}}
     onKeyDown={e=>{if(e.key==="ArrowLeft")go(-1);if(e.key==="ArrowRight")go(1);}}
     tabIndex={0}>
     <div className="pdf-page-toolbar">
