@@ -1,0 +1,1 @@
+import React from"react";export default function ReadingProgress({current,total}:{current:number;total:number}){const p=total?Math.round(Math.max(0,Math.min(1,current/total))*100):0;return <div dir="rtl"><div>{current} / {total} — {p}٪</div><progress max="100" value={p}/></div>}
