@@ -27,12 +27,16 @@ jobs:
       - run: npm run sources:import
       - run: npm run sources:merge
       - name: Translate new source summaries to Central Kurdish
-        if: env.HAS_GROQ == 'true'
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GROQ_MODEL: openai/gpt-oss-120b
           OPEN_SOURCE_TRANSLATE_LIMIT: 10
-        run: npm run sources:translate
+        run: |
+          if [ -z "$GROQ_API_KEY" ]; then
+            echo "GROQ_API_KEY is not configured; skipping translation."
+          else
+            npm run sources:translate
+          fi
       - run: npm run sources:merge
       - name: Import Open Library metadata
         env:
