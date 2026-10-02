@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": "openlibrary",
+      "name": "Open Library",
+      "type": "metadata",
+      "url": "https://openlibrary.org",
+      "license": "ODC-By-1.0",
+      "attribution": "Data derived from Open Library (openlibrary.org)",
+      "enabled": true
+    },
+    {
+      "id": "shayan-book-summaries",
+      "name": "ShayanDarabi/Book-Summaries",
+      "type": "summary-candidate",
+      "url": "https://github.com/ShayanDarabi/Book-Summaries",
+      "license": "review-required",
+      "enabled": false
+    },
+    {
+      "id": "dwyl-quotes",
+      "name": "dwyl/quotes",
+      "type": "quotes-candidate",
+      "url": "https://github.com/dwyl/quotes",
+      "license": "GPL-2.0; quote rights require separate review",
+      "enabled": false
+    }
+  ]
+}
