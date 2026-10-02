@@ -1,22 +1,11 @@
-# Public-source data pipeline
+# Public data ingestion
 
-This app can combine rights-cleared public metadata with the Gutenberg summary pipeline.
+This directory contains source manifests and generated data from public/open datasets.
 
-## Sources currently approved for metadata enrichment
+## Sources
 
-- **Project Gutenberg catalog/texts**: use only individual works whose applicable rights permit redistribution. Gutenberg itself notes that copyright status can differ by territory. See its license/policy.
-- **Open Library**: bibliographic catalog data is openly reusable; individual covers/media can have separate rights, so the pipeline records the source and does not assume every image is unrestricted.
-- **Wikidata**: structured data is CC0. It can be used later to enrich authors, identifiers, dates, languages and categories.
+1. Open Library — book metadata/descriptions. Open Library data is released under ODC Open Database License / ODC-BY attribution requirements. Keep attribution with generated packs.
+2. ShayanDarabi/Book-Summaries — candidate book-summary dataset. The repository is public, but a clear dataset license was not found in the repository metadata we inspected. It is therefore **not automatically redistributed**; the importer only creates a review queue until licensing/permission is verified.
+3. dwyl/quotes — public repository, but its repository license is GPL-2.0 and the quote contents may have separate rights. It is therefore kept as a candidate source rather than copied wholesale into the app.
 
-## Sources deliberately not imported automatically
-
-Public GitHub repositories containing book summaries are not automatically safe to copy merely because the repository is public. For example, some datasets are derived from websites or books whose redistribution rights are not clearly granted. Such sources can be used for research/audit only until their dataset license and underlying-content rights are verified.
-
-## Output
-
-`scripts/gutenberg-build-library.mjs` creates:
-
-- `src/data/library.json` — up to 10,000 Gutenberg book metadata records
-- `content/public-sources/openlibrary-enrichment.json` — cached Open Library enrichment
-
-The Android app can then use the metadata offline. Full book files are downloaded/cached only when explicitly made available through the app's import/download pipeline.
+Generated records must retain source URL, source license/rights note, and import date.
