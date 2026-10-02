@@ -18,6 +18,7 @@ on:
         default: "1000"
   schedule:
     - cron: "15 2 * * 0"
+    - cron: "45 2 * * 3"
 
 permissions:
   contents: write
@@ -27,6 +28,26 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  import-squality:
+    if: github.event_name == 'schedule' && github.event.schedule == '45 2 * * 3'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm run external:squality
+      - name: Commit SQuALITY data
+        run: |
+          git config user.name "kurdish-library-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add content/external/squality-plot.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Import licensed SQuALITY book summaries"
+          git pull --rebase origin main
+          git push
+
   import-cmu:
     runs-on: ubuntu-latest
     timeout-minutes: 30
