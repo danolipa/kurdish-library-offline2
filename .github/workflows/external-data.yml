@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   import-squality:
-    if: github.event_name == 'schedule' && github.event.schedule == '45 2 * * 3'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '45 2 * * 3')
     env:
       HAS_GROQ: ${{ secrets.GROQ_API_KEY != '' }}
     runs-on: ubuntu-latest
