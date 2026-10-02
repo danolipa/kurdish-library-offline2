@@ -1,0 +1,1 @@
+const rtl=/[\u0590-\u08FF\uFB1D-\uFDFD\uFE70-\uFEFC]/;export function detectDirection(text:string):"rtl"|"ltr"|"auto"{const x=text.replace(/[\d\s\p{P}]/gu,"");return x?rtl.test(x)?"rtl":"ltr":"auto"}
