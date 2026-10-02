@@ -38,7 +38,7 @@ for (const q of queries) {
       format: "unknown",
       coverPath: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-L.jpg` : undefined,
       tags: (d.subject || []).slice(0, 8).map(clean).filter(Boolean),
-      addedAt: Date.now(),
+      addedAt: 0,
       source: "bundle",
       sourceUrl: `https://openlibrary.org${key}`,
       firstPublishYear: d.first_publish_year || undefined,
