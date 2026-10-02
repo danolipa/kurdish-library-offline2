@@ -1,0 +1,1 @@
+export const KURDISH_NAMES=["ئارام","دانا","هێمن","ژیان","رووناک","شیلان","باران","ئاوات","هیوا","نیشتمان"];export function isKurdishName(x:string){return KURDISH_NAMES.includes(x.trim())}
