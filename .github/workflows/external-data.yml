@@ -61,6 +61,7 @@ jobs:
           git push
 
   import-cmu:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '15 2 * * 0')
     env:
       HAS_GROQ: ${{ secrets.GROQ_API_KEY != '' }}
     runs-on: ubuntu-latest
