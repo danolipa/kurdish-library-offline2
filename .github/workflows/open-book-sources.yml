@@ -23,6 +23,12 @@ jobs:
           node-version: 22
       - run: npm run sources:import
       - run: npm run sources:merge
+      - name: Translate new open-source summaries to Sorani
+        if: ${{ secrets.GROQ_API_KEY != '' }}
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPEN_SOURCE_TRANSLATE_LIMIT: 10
+        run: npm run sources:translate
       - name: Import Open Library metadata
         env:
           OPENLIBRARY_LIMIT: 500
@@ -35,7 +41,7 @@ jobs:
         run: |
           git config user.name "kurdish-library-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add content/open-sources/imported-summaries.json src/data/summaries.json content/public-sources/openlibrary-books.json content/public-sources/openlibrary-pack.json src/data/library.json
+          git add content/open-sources/imported-summaries.json content/open-sources/translated-summaries.json src/data/summaries.json content/public-sources/openlibrary-books.json content/public-sources/openlibrary-pack.json src/data/library.json
           if git diff --cached --quiet; then
             echo "No source changes."
             exit 0
