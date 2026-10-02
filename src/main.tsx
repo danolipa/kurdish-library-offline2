@@ -31,6 +31,9 @@ const AI_PROVIDERS = {
 type AIProvider = keyof typeof AI_PROVIDERS;
 type AIConfig = { provider:AIProvider; apiKey:string; model:string; baseUrl:string };
 type GoogleProfile = { id:string; email?:string; name?:string; picture?:string };
+type SourcePackIndex = { file:string; count:number; ids:string[] };
+type SourceSummaryManifest = { version:number; generatedAt?:string; total:number; packSize:number; packs:SourcePackIndex[] };
+type SourceSummaryRow = { id:string; bookId?:string; title:string; author?:string; textOriginal:string; textKu?:string; wordCount?:number; source?:string; sourceUrl?:string; rights?:string };
 
 function loadAIConfig():AIConfig{
   try{
@@ -62,24 +65,24 @@ async function testAIConfig(config:AIConfig):Promise<string>{
   return AI_PROVIDERS[config.provider].label+" API کار دەکات ✓";
 }
 
-async function askAI(config:AIConfig,prompt:string):Promise<string>{
+async function askAI(config:AIConfig,prompt:string,maxTokens=1800):Promise<string>{
   if(!config.apiKey.trim()) throw new Error("سەرەتا API Key زیاد بکە");
   if(config.provider==="gemini"){
     const base=(config.baseUrl||AI_PROVIDERS.gemini.base).replace(/\/$/,"");
-    const r=await fetch(base+"/models/"+encodeURIComponent(config.model)+":generateContent?key="+encodeURIComponent(config.apiKey),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
+    const r=await fetch(base+"/models/"+encodeURIComponent(config.model)+":generateContent?key="+encodeURIComponent(config.apiKey),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:.15,maxOutputTokens:maxTokens}})});
     const data=await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(data?.error?.message||"Gemini request failed");
     return data?.candidates?.[0]?.content?.parts?.map((p:any)=>p.text||"").join("")||"وەڵامێک نەگەڕایەوە.";
   }
   if(config.provider==="anthropic"){
     const base=(config.baseUrl||AI_PROVIDERS.anthropic.base).replace(/\/$/,"");
-    const r=await fetch(base+"/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":config.apiKey,"anthropic-version":"2023-06-01"},body:JSON.stringify({model:config.model,max_tokens:1800,messages:[{role:"user",content:prompt}]})});
+    const r=await fetch(base+"/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":config.apiKey,"anthropic-version":"2023-06-01"},body:JSON.stringify({model:config.model,max_tokens:maxTokens,messages:[{role:"user",content:prompt}]})});
     const data=await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(data?.error?.message||"Anthropic request failed");
     return data?.content?.map((p:any)=>p.text||"").join("")||"وەڵامێک نەگەڕایەوە.";
   }
   const base=(config.baseUrl||AI_PROVIDERS[config.provider].base).replace(/\/$/,"");
-  const r=await fetch(base+"/chat/completions",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+config.apiKey},body:JSON.stringify({model:config.model,messages:[{role:"system",content:"You are a helpful Kurdish Library assistant. Answer in natural Central Kurdish (Sorani) unless the user asks otherwise. Do not invent facts."},{role:"user",content:prompt}],temperature:.3})});
+  const r=await fetch(base+"/chat/completions",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+config.apiKey},body:JSON.stringify({model:config.model,max_tokens:maxTokens,messages:[{role:"system",content:"You are a helpful Kurdish Library assistant. Answer in natural Central Kurdish (Sorani) unless the user asks otherwise. Do not invent facts."},{role:"user",content:prompt}],temperature:.15})});
   const data=await r.json().catch(()=>({}));
   if(!r.ok) throw new Error(data?.error?.message||"AI request failed");
   return data?.choices?.[0]?.message?.content||"وەڵامێک نەگەڕایەوە.";
