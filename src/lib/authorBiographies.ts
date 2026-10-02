@@ -1,0 +1,1 @@
+import type{Author}from"../types";export function findAuthor(authors:Author[],name:string){return authors.find(a=>a.name===name)}
