@@ -1,0 +1,1 @@
+import React from"react";import type{Author}from"../types";export default function AuthorProfile({author}:{author:Author}){return <article dir="rtl"><h2>{author.name}</h2><p>{author.bioKu||"زانیاریی زیاتر بەردەست نییە."}</p></article>}
