@@ -1,50 +1,40 @@
-name: External Public Data Ingestion
+name: External Book Data Pipeline
 
 on:
   workflow_dispatch:
     inputs:
-      mode:
-        description: "import or translate"
-        required: true
-        default: "import"
-        type: choice
-        options:
-          - import
-          - translate
-      limit:
-        description: "Number of summaries to translate when mode=translate"
+      cmu_offset:
+        description: "CMU dataset offset"
         required: false
-        default: "10"
+        default: "0"
+      cmu_limit:
+        description: "Books to queue in this batch"
+        required: false
+        default: "1000"
+  schedule:
+    - cron: "15 2 * * 0"
 
 permissions:
   contents: write
 
 jobs:
-  external:
+  import-cmu:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - run: npm run external:squality
-      - name: Translate to Sorani
-        if: inputs.mode == 'translate'
+      - run: npm run external:cmu
         env:
-          GROQ_API_KEY: \${{ secrets.GROQ_API_KEY }}
-          GROQ_MODEL: \${{ vars.GROQ_MODEL }}
-          EXTERNAL_LIMIT: \${{ inputs.limit }}
-        run: |
-          npm run external:translate
-          npm run external:merge
-      - name: Commit imported data
+          CMU_OFFSET: ${{ inputs.cmu_offset || '0' }}
+          CMU_LIMIT: ${{ inputs.cmu_limit || '1000' }}
+      - name: Commit CMU queue
         run: |
           git config user.name "kurdish-library-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add content/external src/data/summaries.json
-          if git diff --cached --quiet; then
-            echo "No data changes."
-            exit 0
-          fi
-          git commit -m "Import licensed public book summary data"
+          git add content/external/cmu
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Import CMU book-summary batch"
           git push
