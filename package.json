@@ -25,7 +25,8 @@
     "public-data:pack": "node scripts/build-public-data-pack.mjs",
     "public-data:apply": "node scripts/apply-public-data-pack.mjs",
     "sources:cmu": "node scripts/import-cmu-book-summaries.mjs",
-    "sources:cmu:merge": "node scripts/merge-cmu-summaries.mjs"
+    "sources:cmu:merge": "node scripts/merge-cmu-summaries.mjs",
+    "sources:cmu:queue-merge": "node scripts/cmu-queue-to-open-sources.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",
