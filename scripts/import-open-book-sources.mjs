@@ -24,5 +24,5 @@ const all=[...(await booksForAgents()),...(await austin())];
 const map=new Map(existing.map(x=>[x.id,x]));
 for(const row of all){const prev=map.get(row.id);map.set(row.id,{...prev,...row,textKu:prev?.textKu||row.textKu||"",wordCount:prev?.wordCount||row.wordCount||0})}
 await fs.mkdir(path.dirname(OUT),{recursive:true});
-await fs.writeFile(OUT,JSON.stringify([...map.values()],null,2)+"\\n","utf8");
+await fs.writeFile(OUT,JSON.stringify([...map.values()],null,2)+"\n","utf8");
 console.log("Imported "+all.length+" records; preserved "+existing.length+" existing records; total "+map.size);
