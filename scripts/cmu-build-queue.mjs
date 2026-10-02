@@ -4,7 +4,7 @@ import { createInterface } from "node:readline";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 const SOURCE_URL="https://www.cs.cmu.edu/~dbamman/data/booksummaries.tar.gz";
-const LIMIT=Number(process.env.CMU_LIMIT||1000), OFFSET=Number(process.env.CMU_OFFSET||0);
+const LIMIT=Number(process.env.CMU_LIMIT||1000), OFFSET=process.env.CMU_OFFSET!==undefined?Number(process.env.CMU_OFFSET):Number(JSON.parse(await fs.readFile("content/external/cmu/cursor.json","utf8").catch(()=>"{\"offset\":0}")).offset||0);
 const OUT="content/external/cmu/summary-queue.json", TMP="/tmp/cmu-booksummaries.tar.gz", EXTRACT="/tmp/cmu-booksummaries";
 const res=await fetch(SOURCE_URL,{headers:{"User-Agent":"Kurdish-Library/1.0"}});
 if(!res.ok) throw new Error(`CMU download failed: ${res.status}`);
@@ -24,5 +24,5 @@ for await(const line of createInterface({input:createReadStream(source),crlfDela
  if(queue.length>=LIMIT)break;
 }
 await fs.mkdir("content/external/cmu",{recursive:true});
-await fs.writeFile(OUT,JSON.stringify({generatedAt:new Date().toISOString(),offset:OFFSET,limit:LIMIT,totalQueued:queue.length,source:SOURCE_URL,license:"CC BY-SA 3.0",items:queue},null,2)+"\n");
+await fs.writeFile("content/external/cmu/cursor.json",JSON.stringify({offset:OFFSET+queue.length,updatedAt:new Date().toISOString()},null,2)+"\\n");\nawait fs.writeFile(OUT,JSON.stringify({generatedAt:new Date().toISOString(),offset:OFFSET,limit:LIMIT,totalQueued:queue.length,source:SOURCE_URL,license:"CC BY-SA 3.0",items:queue},null,2)+"\n");
 console.log(`Queued ${queue.length} CMU books from offset ${OFFSET}.`);
