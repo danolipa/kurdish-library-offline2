@@ -1,0 +1,1 @@
+import{useEffect}from"react";import{installShortcuts,ShortcutMap}from"../lib/keyboardShortcuts";export function useKeyboardShortcuts(map:ShortcutMap){useEffect(()=>installShortcuts(map),[map])}
