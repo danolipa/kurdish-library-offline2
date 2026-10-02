@@ -1,0 +1,1 @@
+import{beforeEach,describe,it,expect}from"vitest";import{saveReadingPosition,getReadingPosition}from"../src/lib/readingPosition";beforeEach(()=>localStorage.clear());describe("readingPosition",()=>{it("clamps progress",()=>{saveReadingPosition({bookId:"x",progress:3,updatedAt:0});expect(getReadingPosition("x")?.progress).toBe(1)})})
