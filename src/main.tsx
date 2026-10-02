@@ -136,7 +136,7 @@ function App(){
     const s=await getBookState(book.id);
     setStates(x=>({...x,[book.id]:s}));
     let blob=await getBookFile(book.id);
-    if(!blob && book.filePath && /^https?:\\/\\//.test(book.filePath)){
+    if(!blob && book.filePath && /^https?:\/\//.test(book.filePath)){
       try{
         setNotice("کتێبەکە یەکەم جار دادەبەزێت…");
         const response=await fetch(book.filePath);
