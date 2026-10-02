@@ -18,11 +18,11 @@ async function austin(){
  const files=(tree.tree||[]).filter(x=>x.type==="blob"&&x.path.endsWith(".md")&&!x.path.endsWith("novels.md")&&!x.path.endsWith("short-stories.md")).map(x=>x.path);
  const out=[];for(const f of files){const r=await fetch("https://raw.githubusercontent.com/AustinT/book-summaries/master/"+f,{headers:{"user-agent":UA}});const text=await r.text();if(!text.trim())continue;const title=(text.match(/^#\s+(.+)$/m)||[])[1]?.trim()||path.basename(f,".md");const id="austint-"+slug(f);out.push({id,bookId:id,title,author:"",textKu:"",textOriginal:text,wordCount:0,source:"AustinT/book-summaries",sourceUrl:"https://github.com/AustinT/book-summaries/blob/master/"+f,rights:"MIT repository license; preserve attribution and license notice",updatedAt:new Date().toISOString()})}return out
 }
+let existing=[];
+try{existing=JSON.parse(await fs.readFile(OUT,"utf8"))}catch{}
 const all=[...(await booksForAgents()),...(await austin())];
-await fs.mkdir(path.dirname(OUT),{recursive:true});
-let existing=[];try{existing=JSON.parse(await fs.readFile(OUT,"utf8"));}catch{}
 const map=new Map(existing.map(x=>[x.id,x]));
-for(const row of all){const old=map.get(row.id);map.set(row.id,{...old,...row,textKu:row.textKu||old?.textKu||"",summaryKu:row.summaryKu||old?.summaryKu||""});}
-const merged=[...map.values()];
-await fs.writeFile(OUT,JSON.stringify(merged,null,2)+"\n","utf8");
-console.log("Imported "+all.length+" open-source records; retained "+existing.length+" existing records; total "+merged.length);
+for(const row of all){const prev=map.get(row.id);map.set(row.id,{...prev,...row,textKu:prev?.textKu||row.textKu||"",wordCount:prev?.wordCount||row.wordCount||0})}
+await fs.mkdir(path.dirname(OUT),{recursive:true});
+await fs.writeFile(OUT,JSON.stringify([...map.values()],null,2)+"\\n","utf8");
+console.log("Imported "+all.length+" records; preserved "+existing.length+" existing records; total "+map.size);
