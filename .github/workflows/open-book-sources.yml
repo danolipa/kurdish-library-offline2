@@ -24,11 +24,17 @@ jobs:
       - run: npm run sources:import
       - run: npm run sources:merge
       - name: Translate new open-source summaries to Sorani
-        if: ${{ secrets.GROQ_API_KEY != '' }}
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           OPEN_SOURCE_TRANSLATE_LIMIT: 10
-        run: npm run sources:translate
+        run: |
+          if [ -n "$GROQ_API_KEY" ]; then
+            npm run sources:translate
+          else
+            echo "GROQ_API_KEY is not configured; skipping Sorani translation."
+          fi
+      - name: Merge translated summaries into app data
+        run: npm run sources:merge
       - name: Import Open Library metadata
         env:
           OPENLIBRARY_LIMIT: 500
