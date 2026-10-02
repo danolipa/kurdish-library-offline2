@@ -22,6 +22,8 @@ jobs:
           distribution: temurin
           java-version: "21"
       - run: npm install --no-audit --no-fund
+      - name: Validate package
+        run: node -e "const p=require('./package.json'); if(!/^\\d+\\.\\d+\\.\\d+$/.test(p.version)) process.exit(1); console.log('Kurdish Library version',p.version)"
       - run: npm run build
         env:
           VITE_GOOGLE_WEB_CLIENT_ID: ${{ secrets.VITE_GOOGLE_WEB_CLIENT_ID }}
@@ -33,104 +35,16 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import json, re
-          version=json.loads(Path("package.json").read_text())["version"]
-          m=re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version)
-          if not m:
-              raise SystemExit("Unsupported app version: "+version)
+          version=json.loads(Path('package.json').read_text())['version']
+          m=re.fullmatch(r'(\\d+)\\.(\\d+)\\.(\\d+)',version)
+          if not m: raise SystemExit('Unsupported app version: '+version)
           major,minor,patch=map(int,m.groups())
           code=major*10000+minor*100+patch
-          p=Path("android/app/build.gradle")
+          p=Path('android/app/build.gradle')
           s=p.read_text()
-          s=re.sub(r'(?m)^(\s*versionCode\s+)\d+\s*        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          root = Path("android/build.gradle")
-          s = root.read_text()
-          s = re.sub(r"com\.android\.tools\.build:gradle:[0-9.]+", "com.android.tools.build:gradle:8.9.1", s)
-          root.write_text(s)
-
-          variables = Path("android/variables.gradle")
-          v = variables.read_text()
-          v = re.sub(r"(?m)^\s*minSdkVersion\s*=\s*\d+\s*$", "    minSdkVersion = 24", v)
-          v = re.sub(r"(?m)^\s*compileSdkVersion\s*=\s*\d+\s*$", "    compileSdkVersion = 36", v)
-          v = re.sub(r"(?m)^\s*targetSdkVersion\s*=\s*\d+\s*$", "    targetSdkVersion = 35", v)
-          variables.write_text(v)
-          check = variables.read_text()
-          if "compileSdkVersion = 36" not in check:
-              raise SystemExit("compileSdkVersion was not set to 36")
-          PY
-      - name: Align AndroidX browser dependency
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("android/build.gradle")
-          s = p.read_text()
-          block = """\nallprojects {\n  configurations.configureEach {\n    resolutionStrategy.force("androidx.browser:browser:1.9.0")\n  }\n}\n"""
-          if "androidx.browser:browser:1.9.0" not in s:
-              p.write_text(s.rstrip() + block)
-          PY
-      - name: Build Android debug APK
-        run: |
-          chmod +x android/gradlew
-          cd android
-          ./gradlew assembleDebug --no-daemon
-      - uses: actions/upload-artifact@v4
-        with:
-          name: web-build
-          path: dist/
-      - uses: actions/upload-artifact@v4
-        with:
-          name: kurdish-library-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-, r'\g<1>'+str(code), s, count=1)
-          s=re.sub(r'(?m)^(\s*versionName\s+)["\'][^"\']+["\']\s*        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          root = Path("android/build.gradle")
-          s = root.read_text()
-          s = re.sub(r"com\.android\.tools\.build:gradle:[0-9.]+", "com.android.tools.build:gradle:8.9.1", s)
-          root.write_text(s)
-
-          variables = Path("android/variables.gradle")
-          v = variables.read_text()
-          v = re.sub(r"(?m)^\s*minSdkVersion\s*=\s*\d+\s*$", "    minSdkVersion = 24", v)
-          v = re.sub(r"(?m)^\s*compileSdkVersion\s*=\s*\d+\s*$", "    compileSdkVersion = 36", v)
-          v = re.sub(r"(?m)^\s*targetSdkVersion\s*=\s*\d+\s*$", "    targetSdkVersion = 35", v)
-          variables.write_text(v)
-          check = variables.read_text()
-          if "compileSdkVersion = 36" not in check:
-              raise SystemExit("compileSdkVersion was not set to 36")
-          PY
-      - name: Align AndroidX browser dependency
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("android/build.gradle")
-          s = p.read_text()
-          block = """\nallprojects {\n  configurations.configureEach {\n    resolutionStrategy.force("androidx.browser:browser:1.9.0")\n  }\n}\n"""
-          if "androidx.browser:browser:1.9.0" not in s:
-              p.write_text(s.rstrip() + block)
-          PY
-      - name: Build Android debug APK
-        run: |
-          chmod +x android/gradlew
-          cd android
-          ./gradlew assembleDebug --no-daemon
-      - uses: actions/upload-artifact@v4
-        with:
-          name: web-build
-          path: dist/
-      - uses: actions/upload-artifact@v4
-        with:
-          name: kurdish-library-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-, r'\g<1>"'+version+'"', s, count=1)
-          if ("versionName \""+version+"\"") not in s:
-              raise SystemExit("versionName was not updated")
+          s,n1=re.subn(r'(?m)^(\\s*versionCode\\s+)\\d+\\s*$',r'\\g<1>'+str(code),s,count=1)
+          s,n2=re.subn(r'(?m)^(\\s*versionName\\s+)["\\'][^"\\']+["\\']\\s*$',r'\\g<1>"'+version+'"',s,count=1)
+          if n1 != 1 or n2 != 1: raise SystemExit('Could not update Android version fields')
           p.write_text(s)
           PY
       - name: Configure Android build toolchain
@@ -138,42 +52,52 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-
-          root = Path("android/build.gradle")
-          s = root.read_text()
-          s = re.sub(r"com\.android\.tools\.build:gradle:[0-9.]+", "com.android.tools.build:gradle:8.9.1", s)
+          root=Path('android/build.gradle')
+          s=root.read_text()
+          s=re.sub(r'com\\.android\\.tools\\.build:gradle:[0-9.]+','com.android.tools.build:gradle:8.9.1',s)
           root.write_text(s)
-
-          variables = Path("android/variables.gradle")
-          v = variables.read_text()
-          v = re.sub(r"(?m)^\s*minSdkVersion\s*=\s*\d+\s*$", "    minSdkVersion = 24", v)
-          v = re.sub(r"(?m)^\s*compileSdkVersion\s*=\s*\d+\s*$", "    compileSdkVersion = 36", v)
-          v = re.sub(r"(?m)^\s*targetSdkVersion\s*=\s*\d+\s*$", "    targetSdkVersion = 35", v)
+          variables=Path('android/variables.gradle')
+          v=variables.read_text()
+          v=re.sub(r'(?m)^\\s*minSdkVersion\\s*=\\s*\\d+\\s*$','    minSdkVersion = 24',v)
+          v=re.sub(r'(?m)^\\s*compileSdkVersion\\s*=\\s*\\d+\\s*$','    compileSdkVersion = 36',v)
+          v=re.sub(r'(?m)^\\s*targetSdkVersion\\s*=\\s*\\d+\\s*$','    targetSdkVersion = 35',v)
           variables.write_text(v)
-          check = variables.read_text()
-          if "compileSdkVersion = 36" not in check:
-              raise SystemExit("compileSdkVersion was not set to 36")
+          if 'compileSdkVersion = 36' not in v: raise SystemExit('compileSdkVersion 36 not configured')
           PY
       - name: Align AndroidX browser dependency
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p = Path("android/build.gradle")
-          s = p.read_text()
-          block = """\nallprojects {\n  configurations.configureEach {\n    resolutionStrategy.force("androidx.browser:browser:1.9.0")\n  }\n}\n"""
-          if "androidx.browser:browser:1.9.0" not in s:
-              p.write_text(s.rstrip() + block)
+          p=Path('android/build.gradle')
+          s=p.read_text()
+          marker='allprojects {'
+          block='''
+          allprojects {
+            configurations.configureEach {
+              resolutionStrategy.force("androidx.browser:browser:1.9.0")
+            }
+          }
+          '''
+          if 'androidx.browser:browser:1.9.0' not in s:
+            p.write_text(s.rstrip()+'\n'+block)
           PY
       - name: Build Android debug APK
         run: |
           chmod +x android/gradlew
           cd android
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon --stacktrace
+      - name: Verify APK output
+        run: |
+          test -s android/app/build/outputs/apk/debug/app-debug.apk
+          file android/app/build/outputs/apk/debug/app-debug.apk
       - uses: actions/upload-artifact@v4
         with:
           name: web-build
           path: dist/
+          retention-days: 30
       - uses: actions/upload-artifact@v4
         with:
           name: kurdish-library-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
