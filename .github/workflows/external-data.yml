@@ -27,6 +27,8 @@ jobs:
     if: github.event_name == 'schedule' && github.event.schedule == '45 2 * * 3'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      HAS_GROQ: ${{ secrets.GROQ_API_KEY != '' }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -34,12 +36,12 @@ jobs:
           node-version: 22
       - run: npm run external:squality
       - run: npm run sources:squality:merge
-      - name: Translate SQuALITY summaries when GROQ is configured
+      - name: Translate SQuALITY summaries to Sorani
         if: env.HAS_GROQ == 'true'
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GROQ_MODEL: openai/gpt-oss-120b
-          OPEN_SOURCE_TRANSLATE_LIMIT: 10
+          OPEN_SOURCE_TRANSLATE_LIMIT: "10"
         run: npm run sources:translate
       - run: npm run sources:merge
       - name: Commit SQuALITY data
@@ -53,10 +55,10 @@ jobs:
           git push
 
   import-cmu:
-    env:
-      HAS_GROQ: ${{ secrets.GROQ_API_KEY != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      HAS_GROQ: ${{ secrets.GROQ_API_KEY != '' }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -68,24 +70,20 @@ jobs:
           CMU_LIMIT: ${{ inputs.cmu_limit || '1000' }}
       - run: npm run sources:cmu:queue-merge
       - name: Translate CMU summaries to Sorani
-        if: ${{ secrets.GROQ_API_KEY != '' }}
-        env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          OPEN_SOURCE_TRANSLATE_LIMIT: "25"
-        run: npm run sources:translate
-      - run: npm run sources:merge
-      - name: Translate a small CMU batch to Sorani
         if: env.HAS_GROQ == 'true'
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          OPEN_SOURCE_TRANSLATE_LIMIT: 10
+          GROQ_MODEL: openai/gpt-oss-120b
+          OPEN_SOURCE_TRANSLATE_LIMIT: "25"
         run: npm run sources:translate
-      - run: npm run sources:merge
+      - name: Merge source summaries
+        if: env.HAS_GROQ == 'true'
+        run: npm run sources:merge
       - name: Commit CMU queue
         run: |
           git config user.name "kurdish-library-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add content/external/cmu content/open-sources/imported-summaries.json content/open-sources/translated-summaries.json src/data/summaries.json content/open-sources/translated-summaries.json src/data/summaries.json
+          git add content/external/cmu content/open-sources/imported-summaries.json content/open-sources/translated-summaries.json src/data/summaries.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Import and translate CMU book-summary batch"
           git pull --rebase origin main
