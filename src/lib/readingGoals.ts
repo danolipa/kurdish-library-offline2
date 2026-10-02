@@ -1,0 +1,1 @@
+const KEY="kurdish-library-goals";export type Goals={dailyMinutes:number;weeklyBooks:number};const D:Goals={dailyMinutes:20,weeklyBooks:1};export function getGoals(){try{return{...D,...JSON.parse(localStorage.getItem(KEY)||"{}")}}catch{return D}}export function saveGoals(g:Goals){try{localStorage.setItem(KEY,JSON.stringify(g))}catch{}}
