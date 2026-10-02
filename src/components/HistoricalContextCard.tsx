@@ -1,0 +1,1 @@
+import React from"react";import type{HistoricalContext}from"../lib/historyContext";export default function HistoricalContextCard({item}:{item:HistoricalContext}){return <aside dir="rtl"><strong>{item.title}</strong>{item.period&&<small> — {item.period}</small>}<p>{item.text}</p></aside>}
