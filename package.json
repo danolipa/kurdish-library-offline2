@@ -20,7 +20,9 @@
     "gutenberg:library": "node scripts/gutenberg-build-library.mjs",
     "external:cmu": "node scripts/cmu-build-queue.mjs",
     "external:cmu:rebuild": "node scripts/cmu-rebuild-summaries.mjs",
-    "sources:translate": "node scripts/translate-open-book-sources.mjs"
+    "sources:translate": "node scripts/translate-open-book-sources.mjs",
+    "public-data:openlibrary": "node scripts/import-openlibrary.mjs",
+    "public-data:pack": "node scripts/build-public-data-pack.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",
