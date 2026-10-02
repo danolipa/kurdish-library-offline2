@@ -1,0 +1,1 @@
+export type SeriesBook={id:string;title:string;order:number};export function sortSeries(items:SeriesBook[]){return[...items].sort((a,b)=>a.order-b.order)}
