@@ -41,10 +41,13 @@ jobs:
 
           variables = Path("android/variables.gradle")
           v = variables.read_text()
-          v = re.sub(r"(?m)^\\s*minSdkVersion\\s*=\\s*\\d+\\s*$", "    minSdkVersion = 24", v)
-          v = re.sub(r"(?m)^\\s*compileSdkVersion\\s*=\\s*\\d+\\s*$", "    compileSdkVersion = 36", v)
-          v = re.sub(r"(?m)^\\s*targetSdkVersion\\s*=\\s*\\d+\\s*$", "    targetSdkVersion = 35", v)
+          v = re.sub(r"(?m)^\s*minSdkVersion\s*=\s*\d+\s*$", "    minSdkVersion = 24", v)
+          v = re.sub(r"(?m)^\s*compileSdkVersion\s*=\s*\d+\s*$", "    compileSdkVersion = 36", v)
+          v = re.sub(r"(?m)^\s*targetSdkVersion\s*=\s*\d+\s*$", "    targetSdkVersion = 35", v)
           variables.write_text(v)
+          check = variables.read_text()
+          if "compileSdkVersion = 36" not in check:
+              raise SystemExit("compileSdkVersion was not set to 36")
           PY
       - name: Align AndroidX browser dependency
         run: |
