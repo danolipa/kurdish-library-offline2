@@ -1,0 +1,2 @@
+/// <reference lib="webworker" />
+import{createWorker}from"tesseract.js";let worker:Awaited<ReturnType<typeof createWorker>>|null=null;async function getWorker(){worker??=await createWorker("kur+ara+eng",1,{logger:m=>self.postMessage({type:"progress",data:m})});return worker}self.onmessage=async(e:MessageEvent)=>{if(e.data?.type!=="recognize")return;try{const w=await getWorker(),r=await w.recognize(e.data.payload.image);self.postMessage({type:"result",data:r.data})}catch(err){self.postMessage({type:"error",error:err instanceof Error?err.message:String(err)})}};
