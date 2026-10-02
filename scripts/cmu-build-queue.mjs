@@ -4,7 +4,7 @@ import { createInterface } from "node:readline";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 const SOURCE_URL="https://www.cs.cmu.edu/~dbamman/data/booksummaries.tar.gz";
-const LIMIT=Number(process.env.CMU_LIMIT||1000), OFFSET=process.env.CMU_OFFSET!==undefined?Number(process.env.CMU_OFFSET):Number(JSON.parse(await fs.readFile("content/external/cmu/cursor.json","utf8").catch(()=>"{\"offset\":0}")).offset||0);
+const LIMIT=Number(process.env.CMU_LIMIT||1000), OFFSET=process.env.CMU_OFFSET?.trim()?Number(process.env.CMU_OFFSET):Number(JSON.parse(await fs.readFile("content/external/cmu/cursor.json","utf8").catch(()=>"{\"offset\":0}")).offset||0);
 const OUT="content/external/cmu/summary-queue.json", TMP="/tmp/cmu-booksummaries.tar.gz", EXTRACT="/tmp/cmu-booksummaries";
 const res=await fetch(SOURCE_URL,{headers:{"User-Agent":"Kurdish-Library/1.0"}});
 if(!res.ok) throw new Error(`CMU download failed: ${res.status}`);
