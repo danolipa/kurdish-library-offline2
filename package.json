@@ -19,7 +19,8 @@
     "sources:merge": "node scripts/merge-open-book-summaries.mjs",
     "gutenberg:library": "node scripts/gutenberg-build-library.mjs",
     "external:cmu": "node scripts/cmu-build-queue.mjs",
-    "external:cmu:rebuild": "node scripts/cmu-rebuild-summaries.mjs"
+    "external:cmu:rebuild": "node scripts/cmu-rebuild-summaries.mjs",
+    "sources:translate": "node scripts/translate-open-book-sources.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",
