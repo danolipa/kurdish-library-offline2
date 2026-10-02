@@ -3,7 +3,7 @@ import path from "node:path";
 
 const root=process.argv[2]||"public/library/books";
 const manifest=process.argv[3]||"src/data/library.json";
-const allowed=new Set(["pdf","epub","txt","html","htm"]);
+const allowed=new Set(["pdf","epub","txt","html","htm","unknown"]);
 const seen=new Set(); const errors=[]; const rows=[];
 
 function walk(dir){
