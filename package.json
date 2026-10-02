@@ -16,7 +16,8 @@
     "external:translate": "node scripts/translate-external.mjs",
     "external:merge": "node scripts/merge-external-summaries.mjs",
     "sources:import": "node scripts/import-open-book-sources.mjs",
-    "sources:merge": "node scripts/merge-open-book-summaries.mjs"
+    "sources:merge": "node scripts/merge-open-book-summaries.mjs",
+    "gutenberg:library": "node scripts/gutenberg-build-library.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",
