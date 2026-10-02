@@ -56,11 +56,18 @@ jobs:
           CMU_OFFSET: ${{ inputs.cmu_offset || '' }}
           CMU_LIMIT: ${{ inputs.cmu_limit || '1000' }}
       - run: npm run sources:cmu:queue-merge
+      - name: Translate a small CMU batch to Sorani
+        if: ${{ secrets.GROQ_API_KEY != '' }}
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPEN_SOURCE_TRANSLATE_LIMIT: 10
+        run: npm run sources:translate
+      - run: npm run sources:merge
       - name: Commit CMU queue
         run: |
           git config user.name "kurdish-library-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add content/external/cmu content/open-sources/imported-summaries.json
+          git add content/external/cmu content/open-sources/imported-summaries.json content/open-sources/translated-summaries.json src/data/summaries.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Import CMU book-summary batch"
           git pull --rebase origin main
