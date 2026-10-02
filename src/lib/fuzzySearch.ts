@@ -1,0 +1,4 @@
+export function normalizeKurdish(s:string){return s.normalize("NFKC").trim().toLocaleLowerCase("ku").replace(/[ەه]/g,"ه").replace(/[یيى]/g,"ی").replace(/[کك]/g,"ک").replace(/[ڕر]/g,"ر").replace(/ـ/g,"").replace(/\s+/g," ")}
+export function levenshtein(a:string,b:string){const row=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){let left=i;for(let j=1;j<=b.length;j++){const up=row[j],cost=a[i-1]===b[j-1]?0:1;row[j]=Math.min(row[j]+1,left+1,up+cost);left=row[j]}}return row[b.length]}
+export function fuzzyScore(query:string,text:string){const q=normalizeKurdish(query),t=normalizeKurdish(text);if(!q)return 0;if(t.includes(q))return 1;const d=levenshtein(q,t.slice(0,Math.max(q.length,t.length)));return Math.max(0,1-d/Math.max(q.length,t.length,1))}
+export function fuzzyMatch(query:string,text:string,threshold=.45){return fuzzyScore(query,text)>=threshold}
