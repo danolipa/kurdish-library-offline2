@@ -15,6 +15,8 @@ concurrency:
 
 jobs:
   import:
+    env:
+      HAS_GROQ: ${{ secrets.GROQ_API_KEY != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -25,7 +27,7 @@ jobs:
       - run: npm run sources:import
       - run: npm run sources:merge
       - name: Translate new source summaries to Central Kurdish
-        if: ${{ secrets.GROQ_API_KEY != '' }}
+        if: env.HAS_GROQ == 'true'
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GROQ_MODEL: openai/gpt-oss-120b
