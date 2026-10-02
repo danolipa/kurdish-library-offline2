@@ -1,1 +1,30 @@
-[]
+[
+  {
+    "id": "james-clear",
+    "name": "James Clear",
+    "bioKu": "نووسەر و توێژەرێک لە بواری عادەت، گۆڕانی ڕەفتار و پەرەپێدانی کەسی.",
+    "source": "Books for Agents",
+    "sourceUrl": "https://booksforagents.com/books/atomic-habits"
+  },
+  {
+    "id": "cal-newport",
+    "name": "Cal Newport",
+    "bioKu": "نووسەر و بیرمەند لە بواری کار، سەرنج و کاری قووڵ.",
+    "source": "Books for Agents",
+    "sourceUrl": "https://booksforagents.com/books/deep-work"
+  },
+  {
+    "id": "robert-c-martin",
+    "name": "Robert C. Martin",
+    "bioKu": "نووسەر و مامۆستای بواری نەرمەکاڵە و clean code.",
+    "source": "Books for Agents",
+    "sourceUrl": "https://booksforagents.com/books/clean-code"
+  },
+  {
+    "id": "eric-ries",
+    "name": "Eric Ries",
+    "bioKu": "نووسەر و پەرەپێدەری بیرۆکەی Lean Startup و تاقیکردنەوەی بەردەوامی product.",
+    "source": "Books for Agents",
+    "sourceUrl": "https://booksforagents.com/books/the-lean-startup"
+  }
+]
