@@ -1,6 +1,11 @@
 name: External Book Data Pipeline
 
 on:
+  push:
+    paths:
+      - "scripts/cmu-build-queue.mjs"
+      - "content/external/**"
+      - ".github/workflows/external-data.yml"
   workflow_dispatch:
     inputs:
       cmu_offset:
