@@ -1,0 +1,36 @@
+name: Import Open Book Sources
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "15 3 * * 1"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: open-book-source-import
+  cancel-in-progress: true
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm run sources:import
+      - run: npm run sources:merge
+      - name: Commit imported source data
+        run: |
+          git config user.name "kurdish-library-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add content/open-sources/imported-summaries.json src/data/summaries.json
+          if git diff --cached --quiet; then
+            echo "No source changes."
+            exit 0
+          fi
+          git commit -m "Import licensed open book summaries"
+          git push
