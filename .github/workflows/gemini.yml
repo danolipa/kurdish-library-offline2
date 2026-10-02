@@ -1,0 +1,21 @@
+name: Run Gemini Script
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  run-gemini:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Install dependencies
+        run: pip install google-generativeai
+      - name: Run Script
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python chat_with_repo.py
