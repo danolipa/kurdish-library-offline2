@@ -28,6 +28,7 @@ jobs:
         env:
           VITE_GOOGLE_WEB_CLIENT_ID: ${{ secrets.VITE_GOOGLE_WEB_CLIENT_ID }}
       - run: npx tsc --noEmit
+      - run: npm test
       - run: rm -rf android && npx cap add android
       - run: npx cap sync android
       - name: Set Android app version from package.json
