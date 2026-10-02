@@ -402,7 +402,7 @@ function App(){
       <div className="top-actions"><label className="import">➕ هاوردەکردن<input hidden type="file" multiple accept=".pdf,.epub,.txt,.html,.htm" onChange={importFiles}/></label>
       <label className="import">🗂️ داتاپاک<input hidden type="file" accept=".json,application/json" onChange={importDataPack}/></label><button onClick={()=>setAiOpen(true)}>🤖 AI</button><button onClick={()=>setSettingsOpen(true)}>⚙️</button><button onClick={()=>setTheme(theme==="light"?"dark":theme==="dark"?"sepia":theme==="sepia"?"eink":"light")}>{theme==="light"?"☀️":theme==="dark"?"🌙":theme==="sepia"?"📜":"📄"}</button></div></header>
     <main>      <nav className="main-nav"><button className={tab==="home"?"active":""} onClick={()=>setTab("home")}>🏠 سەرەتا</button><button className={tab==="library"?"active":""} onClick={()=>setTab("library")}>📚 کتێبخانە</button><button className={tab==="summaries"?"active":""} onClick={()=>setTab("summaries")}>✨ پوختەکان</button><button className={tab==="quotes"?"active":""} onClick={()=>setTab("quotes")}>💬 وتەکان</button><button className={tab==="favorites"?"active":""} onClick={()=>setTab("favorites")}>❤️ دڵخوازەکان</button><button className={tab==="media"?"active":""} onClick={()=>setTab("media")}>🎬 میدیا پلەیەر</button><button onClick={()=>setNotebookOpen(true)}>🗒️ تۆمار و تێبینی</button></nav>
-<section className="hero"><div><div className="eyebrow">KURDISH LIBRARY • OFFLINE</div><h2>هەموو کتێبەکانت لە یەک شوێن</h2><p>گەڕان، خوێندنەوە، پاشەکەوتکردن و خوێندنەوەی PDF/EPUB بە شێوەی ئۆفلاین.</p></div><div className="stats"><strong>{books.length}</strong><span>کتێب</span><strong>{filtered.length}</strong><span>ئەنجام</span></div><input className="search" placeholder="گەڕان بە ناوی کتێب، نووسەر یان ناوەڕۆک..." value={query} onChange={e=>setQuery(e.target.value)}/></section>
+<section className="hero"><div><div className="eyebrow">KURDISH LIBRARY • OFFLINE</div><h2>هەموو کتێبەکانت لە یەک شوێن</h2><p>گەڕان، خوێندنەوە، پاشەکەوتکردن و خوێندنەوەی PDF/EPUB بە شێوەی ئۆفلاین.</p></div><div className="stats"><strong>{books.length}</strong><span>کتێب</span><strong>{summaries.length}</strong><span>پوختە</span><strong>{filtered.length}</strong><span>ئەنجام</span></div><input className="search" placeholder="گەڕان بە ناوی کتێب، نووسەر یان ناوەڕۆک..." value={query} onChange={e=>setQuery(e.target.value)}/></section>
       <nav className="chips">{categories.map(x=><button className={category===x?"active":""} onClick={()=>setCategory(x)} key={x}>{x}</button>)}</nav>
       <section className="home-tools"><button onClick={()=>setSettingsOpen(true)}>⚙️ ڕێکخستنەکان</button><span className="view-label">پیشاندان:</span>{(["grid","shelf","list","small"] as const).map(v=><button key={v} className={viewMode===v?"active-tool":""} onClick={()=>setViewMode(v)}>{v==="grid"?"▦ گرید":v==="shelf"?"▤ ڕەف":v==="list"?"☰ لیست":"▪ ئایکۆنی بچوک"}</button>)}<button onClick={()=>setNotice("بەشی پوختە و وتەکان بۆ داتای ئۆفلاین ئامادە کراوە")}>✨ پوختە و وتەکان</button><button onClick={()=>setNotice("Ink Reader: بۆ PDF لە خوێندنەوەدا چالاکی بکە")}>🖋️ Ink Reader</button></section>      {tab==="home"&&<>{resumeBooks.length>0&&<section className="resume-panel"><h2>↩️ بەردەوامبوون لە خوێندنەوە</h2><div className="resume-row">{resumeBooks.map(b=><button key={b.id} onClick={()=>openBook(b)}><strong>{b.title}</strong><small>{Math.round((states[b.id]?.progress||0)*100)}% خوێندراوەتەوە</small></button>)}</div></section>}</>}
       {tab==="summaries"&&<section className="content-panel"><h2>✨ پوختەی کتێبەکان</h2><p>پوختەکان لە ناوخۆی ئامێر هەڵدەگیرێن و بۆ گەڕان و خوێندنەوەی ئۆفلاین بەکاردێن.</p>{summaries.length?<><div className="content-list">{pagedSummaries.map(s=><article key={s.id}><h3>{s.title}</h3><p>{s.textKu}</p><small>{s.wordCount?`ژمارەی وشە: ${s.wordCount} · `:""}{s.source||"داتای ئۆفلاین"}</small></article>)}</div><PageControls page={safeSummaryPage} total={totalSummaryPages} onChange={setSummaryPage}/></>:<div className="empty-state"><strong>هێشتا پوختەی ئۆفلاین نییە.</strong><p>داتاپاکی JSON لە دوگمەی «داتاپاک» هاوردە بکە؛ دواتر پوختەکان لێرە و لە گەڕانی کتێبەکاندا دەردەکەون.</p></div>}</section>}
@@ -632,4 +632,23 @@ function MediaPlayer(){
 }
 
 function formatTime(value:number){if(!Number.isFinite(value))return "00:00";const m=Math.floor(value/60),s=Math.floor(value%60);return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`}
-createRoot(document.getElementById("root")!).render(<App/>);
+class AppErrorBoundary extends React.Component<{children:React.ReactNode},{error:Error|null}>{
+  state:{error:Error|null}={error:null};
+  static getDerivedStateFromError(error:Error){return {error};}
+  componentDidCatch(error:Error,info:React.ErrorInfo){console.error("Kurdish Library runtime error",error,info);}
+  render(){
+    if(this.state.error){
+      return <div dir="rtl" style={{minHeight:"100vh",display:"grid",placeItems:"center",padding:"24px",fontFamily:"system-ui"}}>
+        <div style={{maxWidth:"680px",textAlign:"center"}}>
+          <div style={{fontSize:"56px"}}>⚠️</div>
+          <h1>کتێبخانەی کوردی نەیتوانی پەڕەکە بار بکات</h1>
+          <p>هەڵەیەکی ناچاوەڕوانکراو ڕوویدا. دەتوانیت ئەپەکە دووبارە بار بکەیتەوە.</p>
+          <button onClick={()=>location.reload()} style={{padding:"12px 20px",borderRadius:"12px",cursor:"pointer"}}>🔄 دووبارە بارکردنەوە</button>
+        </div>
+      </div>;
+    }
+    return this.props.children;
+  }
+}
+const root=document.getElementById("root");
+if(root) createRoot(root).render(<AppErrorBoundary><App/></AppErrorBoundary>);
