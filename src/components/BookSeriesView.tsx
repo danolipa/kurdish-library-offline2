@@ -1,0 +1,1 @@
+import React from"react";import{sortSeries,SeriesBook}from"../lib/bookSeries";export default function BookSeriesView({name,books}:{name:string;books:SeriesBook[]}){return <section dir="rtl"><h3>{name}</h3><ol>{sortSeries(books).map(b=><li key={b.id}>{b.title}</li>)}</ol></section>}
