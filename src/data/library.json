@@ -1,1 +1,62 @@
-[]
+[
+  {
+    "id": "bfa-atomic-habits",
+    "title": "Atomic Habits",
+    "author": "James Clear",
+    "category": "Psychology",
+    "language": "en",
+    "format": "unknown",
+    "summaryKu": "پوختەی کوردی لە داتای CC BY-SA 4.0.",
+    "addedAt": 1790924707428,
+    "source": "bundle",
+    "tags": [
+      "Books for Agents",
+      "CC BY-SA 4.0"
+    ]
+  },
+  {
+    "id": "bfa-deep-work",
+    "title": "Deep Work",
+    "author": "Cal Newport",
+    "category": "Self-improvement",
+    "language": "en",
+    "format": "unknown",
+    "summaryKu": "پوختەی کوردی لە داتای CC BY-SA 4.0.",
+    "addedAt": 1790924707428,
+    "source": "bundle",
+    "tags": [
+      "Books for Agents",
+      "CC BY-SA 4.0"
+    ]
+  },
+  {
+    "id": "bfa-clean-code",
+    "title": "Clean Code",
+    "author": "Robert C. Martin",
+    "category": "Technology",
+    "language": "en",
+    "format": "unknown",
+    "summaryKu": "پوختەی کوردی لە داتای CC BY-SA 4.0.",
+    "addedAt": 1790924707428,
+    "source": "bundle",
+    "tags": [
+      "Books for Agents",
+      "CC BY-SA 4.0"
+    ]
+  },
+  {
+    "id": "bfa-lean-startup",
+    "title": "The Lean Startup",
+    "author": "Eric Ries",
+    "category": "Business",
+    "language": "en",
+    "format": "unknown",
+    "summaryKu": "پوختەی کوردی لە داتای CC BY-SA 4.0.",
+    "addedAt": 1790924707428,
+    "source": "bundle",
+    "tags": [
+      "Books for Agents",
+      "CC BY-SA 4.0"
+    ]
+  }
+]
