@@ -8,7 +8,7 @@ const books = JSON.parse(await fs.readFile(input, "utf8"));
 const normalized = books.map(b => ({
   id: b.id, title: b.title, author: b.author, category: b.category,
   language: b.language, format: b.format || "unknown", coverPath: b.coverPath,
-  tags: b.tags, addedAt: b.addedAt || Date.now(), source: "bundle",
+  tags: b.tags, addedAt: b.addedAt || 0, source: "bundle",
   sourceUrl: b.sourceUrl, summaryKu: "", summary: "",
   rights: "Metadata derived from Open Library; attribution required under applicable Open Database licensing."
 }));
