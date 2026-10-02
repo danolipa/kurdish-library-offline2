@@ -1,0 +1,1 @@
+import React,{useMemo}from"react";import{useKeyboardShortcuts}from"../hooks/useKeyboardShortcuts";export default function ReaderWithShortcuts({children,onNext,onPrev}:{children:React.ReactNode;onNext:()=>void;onPrev:()=>void}){const map=useMemo(()=>({"ArrowRight":onNext,"ArrowLeft":onPrev}),[onNext,onPrev]);useKeyboardShortcuts(map);return <>{children}</>}
