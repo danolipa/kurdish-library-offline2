@@ -146,7 +146,7 @@ jobs:
             git pull --rebase origin main
             git stash pop
           fi
-          git add content/external/cmu content/open-sources src/data/summaries.json
+          git add content/external/cmu content/open-sources src/data/library.json src/data/summaries.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Import and translate CMU book-summary batch"
           git push
