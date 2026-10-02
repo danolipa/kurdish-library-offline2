@@ -289,7 +289,7 @@ function App(){
     try{
       const result=await askAI(aiConfig,contextual);
       setAiResult(result);
-      setAiThread(prev=>[...prev,{role:"user",content:prompt},{role:"assistant",content:result}].slice(-12));
+      setAiThread(prev=>[...prev,{role:"user" as const,content:prompt},{role:"assistant" as const,content:result}].slice(-12));
       if(selected){
         const item={id:`ai-${Date.now()}`,bookId:selected.id,provider:aiConfig.provider,model:aiConfig.model,prompt,answer:result,createdAt:Date.now()};
         await saveAIHistory(item); setAiHistory(await getAIHistory());
