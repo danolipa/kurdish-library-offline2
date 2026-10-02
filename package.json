@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run content:pack-summaries && vite build",
+    "build": "npm run content:pack-source-summaries && npm run content:pack-summaries && vite build",
     "preview": "vite preview",
     "android:sync": "cap sync android",
     "content:index": "node scripts/build-content-index.mjs content src/data",
@@ -27,7 +27,8 @@
     "sources:cmu:queue-merge": "node scripts/cmu-queue-to-open-sources.mjs",
     "sources:squality:merge": "node scripts/squality-to-open-sources.mjs",
     "content:pack-summaries": "node scripts/build-summary-packs.mjs",
-    "cmu:merge-library": "node scripts/cmu-merge-library.mjs"
+    "cmu:merge-library": "node scripts/cmu-merge-library.mjs",
+    "content:pack-source-summaries": "node scripts/build-source-summary-packs.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",
