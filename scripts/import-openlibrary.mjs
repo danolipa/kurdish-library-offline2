@@ -15,9 +15,16 @@ for (const q of queries) {
   url.searchParams.set("q", q);
   url.searchParams.set("limit", String(remaining));
   url.searchParams.set("fields", "key,title,author_name,first_publish_year,subject,language,cover_i,edition_key");
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Open Library request failed: ${res.status}`);
-  const data = await res.json();
+  let data=null, lastStatus=0;
+  for(let attempt=1;attempt<=4;attempt++){
+    try{
+      const res=await fetch(url,{headers:{"User-Agent":"Kurdish-Library/2 (open-book metadata importer)"}});
+      lastStatus=res.status;
+      if(res.ok){data=await res.json();break;}
+    }catch{}
+    await new Promise(r=>setTimeout(r,attempt*1500));
+  }
+  if(!data){console.warn(`Open Library query failed after retries: ${q} (HTTP ${lastStatus})`);continue;}
 
   for (const d of data.docs || []) {
     const key = clean(d.key);
