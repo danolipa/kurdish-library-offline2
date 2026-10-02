@@ -35,7 +35,7 @@ jobs:
       - run: npm run external:squality
       - run: npm run sources:squality:merge
       - name: Translate SQuALITY summaries when GROQ is configured
-        if: ${{ secrets.GROQ_API_KEY != '' }}
+        if: env.HAS_GROQ == 'true'
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GROQ_MODEL: openai/gpt-oss-120b
@@ -53,6 +53,8 @@ jobs:
           git push
 
   import-cmu:
+    env:
+      HAS_GROQ: ${{ secrets.GROQ_API_KEY != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -66,7 +68,7 @@ jobs:
           CMU_LIMIT: ${{ inputs.cmu_limit || '1000' }}
       - run: npm run sources:cmu:queue-merge
       - name: Translate a small CMU batch to Sorani
-        if: ${{ secrets.GROQ_API_KEY != '' }}
+        if: env.HAS_GROQ == 'true'
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           OPEN_SOURCE_TRANSLATE_LIMIT: 10
