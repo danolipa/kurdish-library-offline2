@@ -2,6 +2,11 @@ name: Import Open Book Sources
 
 on:
   workflow_dispatch:
+    inputs:
+      translate:
+        description: "Translate a small batch into Central Kurdish when GROQ_API_KEY is configured"
+        required: false
+        default: "false"
   schedule:
     - cron: "15 3 * * 1"
 
@@ -10,7 +15,7 @@ permissions:
 
 concurrency:
   group: open-book-source-import
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   import:
@@ -23,18 +28,6 @@ jobs:
           node-version: 22
       - run: npm run sources:import
       - run: npm run sources:merge
-      - name: Translate new open-source summaries to Sorani
-        env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          OPEN_SOURCE_TRANSLATE_LIMIT: 10
-        run: |
-          if [ -n "$GROQ_API_KEY" ]; then
-            npm run sources:translate
-          else
-            echo "GROQ_API_KEY is not configured; skipping Sorani translation."
-          fi
-      - name: Merge translated summaries into app data
-        run: npm run sources:merge
       - name: Import Open Library metadata
         env:
           OPENLIBRARY_LIMIT: 500
@@ -43,14 +36,28 @@ jobs:
         run: npm run public-data:pack
       - name: Merge Open Library metadata into app
         run: npm run public-data:apply
+      - name: Optional Sorani translation
+        if: ${{ github.event_name == 'schedule' || inputs.translate == 'true' }}
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPEN_SOURCE_TRANSLATE_LIMIT: "10"
+        run: |
+          if [ -z "$GROQ_API_KEY" ]; then
+            echo "GROQ_API_KEY is not configured; skipping translation."
+          else
+            npm run sources:translate
+          fi
+      - name: Rebuild app content index
+        run: npm run content:index
       - name: Commit imported source data
         run: |
           git config user.name "kurdish-library-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add content/open-sources/imported-summaries.json content/open-sources/translated-summaries.json src/data/summaries.json content/public-sources/openlibrary-books.json content/public-sources/openlibrary-pack.json src/data/library.json
+          git add content/open-sources/imported-summaries.json content/open-sources/translated-summaries.json src/data/summaries.json content/public-sources/openlibrary-books.json content/public-sources/openlibrary-pack.json src/data/library.json src/data/authors.json src/data/quotes.json
           if git diff --cached --quiet; then
             echo "No source changes."
             exit 0
           fi
-          git commit -m "Import licensed open book summaries"
+          git commit -m "Import licensed open book sources"
+          git pull --rebase origin main
           git push
