@@ -1,0 +1,1 @@
+export function groupAssets(paths:string[],size=200){const groups:string[][]=[];for(let i=0;i<paths.length;i+=size)groups.push(paths.slice(i,i+size));return groups}
