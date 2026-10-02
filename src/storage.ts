@@ -180,3 +180,37 @@ export async function searchExtractedText(query:string):Promise<Set<string>> {
   db.close();
   return matches;
 }
+export type AIHistoryItem = {
+  id: string;
+  bookId?: string;
+  provider: string;
+  model: string;
+  prompt: string;
+  answer: string;
+  createdAt: number;
+};
+
+export async function getAIHistory(bookId?: string): Promise<AIHistoryItem[]> {
+  const items = await getAll<AIHistoryItem>("aiHistory");
+  return items
+    .filter(item => !bookId || item.bookId === bookId)
+    .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function saveAIHistory(item: AIHistoryItem) {
+  return putAll("aiHistory", [item]);
+}
+
+export async function clearAIHistory(bookId?: string) {
+  const items = await getAIHistory(bookId);
+  if (!items.length) return;
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction("aiHistory", "readwrite");
+    const store = tx.objectStore("aiHistory");
+    for (const item of items) store.delete(item.id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  db.close();
+}
