@@ -1,0 +1,1 @@
+import React,{useState}from"react";import{getFootnote}from"../lib/footnotes";export default function InteractiveFootnote({id}:{id:string}){const[f,setF]=useState(false),n=getFootnote(id);if(!n)return null;return <span dir="rtl"><button onClick={()=>setF(x=>!x)}>{n.label}</button>{f&&<span role="note"> {n.text}</span>}</span>}
