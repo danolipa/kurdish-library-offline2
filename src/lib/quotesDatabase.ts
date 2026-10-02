@@ -1,0 +1,1 @@
+import type{Quote}from"../types";export function searchQuotes(quotes:Quote[],query:string){const q=query.trim().toLocaleLowerCase();return q?quotes.filter(x=>(x.textKu+" "+x.textOriginal+" "+x.author).toLocaleLowerCase().includes(q)):quotes}
