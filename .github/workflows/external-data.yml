@@ -55,11 +55,12 @@ jobs:
         env:
           CMU_OFFSET: ${{ inputs.cmu_offset || '' }}
           CMU_LIMIT: ${{ inputs.cmu_limit || '1000' }}
+      - run: npm run sources:cmu:queue-merge
       - name: Commit CMU queue
         run: |
           git config user.name "kurdish-library-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add content/external/cmu
+          git add content/external/cmu content/open-sources/imported-summaries.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Import CMU book-summary batch"
           git pull --rebase origin main
