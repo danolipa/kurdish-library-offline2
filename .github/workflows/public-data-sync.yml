@@ -1,0 +1,45 @@
+name: Sync public book metadata
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Maximum Open Library records to import"
+        required: false
+        default: "500"
+  schedule:
+    - cron: "20 4 * * 1"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: public-data-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Import Open Library metadata
+        env:
+          OPENLIBRARY_LIMIT: ${{ inputs.limit || '500' }}
+        run: node scripts/import-openlibrary.mjs
+      - name: Build normalized pack
+        run: node scripts/build-public-data-pack.mjs
+      - name: Commit updated public data
+        run: |
+          git config user.name "kurdish-library-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add content/public-sources/openlibrary-books.json content/public-sources/openlibrary-pack.json
+          if git diff --cached --quiet; then
+            echo "No public data changes."
+            exit 0
+          fi
+          git commit -m "Sync Open Library public metadata"
+          git push
