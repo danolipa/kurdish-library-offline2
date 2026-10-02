@@ -290,6 +290,103 @@ function App(){
     const context=`کتێب: ${selected.title}\nنووسەر: ${selected.author}\nپۆل: ${selected.category}\n\nدەقی بەردەست لە کتێب/پوختە:\n${sourceText}`;
     await runAI(`تۆ یاریدەدەری کتێبخانەی کوردییت. وەڵام بە سۆرانیی سروشتی بدە. تەنها بە پشتبەستن بە زانیاریی خوارەوە وەڵام بدە و ئەگەر زانیارییەک نییە، بە ڕوونی بڵێ.\n\n${context}\n\nداواکاری خوێنەر: ${prompt}`);
   }
+  async function loadSourceSummary(id:string):Promise<SourceSummaryRow|null>{
+    const hit=sourceIndex.find(x=>x.id===id);
+    if(!hit)return null;
+    const cached=sourcePackCache.current.get(hit.file);
+    if(cached)return cached.find(x=>x.id===id)||null;
+    const r=await fetch("/data/source-summaries/"+hit.file);
+    if(!r.ok)return null;
+    const rows=await r.json();
+    if(!Array.isArray(rows))return null;
+    sourcePackCache.current.set(hit.file,rows);
+    return rows.find((x:any)=>x.id===id)||null;
+  }
+
+  async function translateSourceSummaryId(id:string){
+    if(!sourceIdSet.has(id)){setNotice("سەرچاوەی ئینگلیزی بۆ ئەم کتێبە نییە.");return false;}
+    if(!aiConfig.apiKey.trim()){setNotice("بۆ وەرگێڕان، یەکەم جار API Key لە ڕێکخستنەکان زیاد بکە.");setSettingsOpen(true);return false;}
+    const row=await loadSourceSummary(id);
+    if(!row?.textOriginal){setNotice("دەقی سەرچاوەکە بەردەست نییە.");return false;}
+    const book=books.find(b=>b.id===id);
+    const prompt=[
+      "وەک وەرگێڕ و دەستنووسکاری پیشەیی کوردیی ناوەندی (سۆرانی) کار بکە.",
+      "دەقی خوارەوە بە تەواوی و بە وردی بگۆڕە بۆ سۆرانیی سروشتی و خوێندراو.",
+      "هیچ زانیارییەکی نوێ زیاد مەکە و هیچ بڕیارێکی نووسەر یان ڕووداوێک مەگۆڕە.",
+      "ناوی کەس، شوێن و ناوی کتێبەکان بە شێوەیەکی دروست و ناسراو بنووسە.",
+      "پوختەکە لە شێوەی پوختە بمێنێتەوە؛ دەقی سەرچاوە بەهۆی درێژکردنەوەی ساختە گەورە مەکە.",
+      "تەنها دەقی کۆتایی سۆرانی بنووسە، بەبێ پێشەکی یان تێبینی.",
+      "",
+      "کتێب: "+(book?.title||row.title),
+      "نووسەر: "+(book?.author||row.author||"Unknown"),
+      "",
+      "دەقی سەرچاوە:",
+      row.textOriginal.slice(0,30000)
+    ].join("\n");
+    const text=await askAI(aiConfig,prompt,5000);
+    const now=new Date().toISOString();
+    const summary:Summary={
+      id:row.id,
+      bookId:row.bookId||row.id,
+      title:row.title,
+      textKu:text.trim(),
+      textOriginal:row.textOriginal,
+      wordCount:text.trim().split(/\s+/).filter(Boolean).length,
+      source:row.source,
+      sourceUrl:row.sourceUrl,
+      rights:row.rights,
+      updatedAt:now
+    };
+    await saveSummaries([summary]);
+    setSummaries(prev=>prev.some(x=>x.id===summary.id)?prev.map(x=>x.id===summary.id?summary:x):[summary,...prev]);
+    const b=books.find(x=>x.id===summary.bookId);
+    if(b){
+      const next={...b,summaryKu:summary.textKu};
+      setBooks(prev=>prev.map(x=>x.id===b.id?next:x));
+      await saveBook(next);
+    }
+    setNotice("پوختەی سۆرانی پاشەکەوت کرا ✓");
+    return true;
+  }
+
+  async function translateSelectedSummary(){
+    if(!selected)return;
+    setTranslationBusy(true);
+    setTranslationProgress({done:0,total:1});
+    translationStopRef.current=false;
+    try{
+      await translateSourceSummaryId(selected.id);
+      setTranslationProgress({done:1,total:1});
+    }catch(e:any){
+      setNotice("وەرگێڕان سەرکەوتوو نەبوو: "+(e?.message||"هەڵە"));
+    }finally{
+      setTranslationBusy(false);
+      translationStopRef.current=false;
+    }
+  }
+
+  async function translateNextSourceSummaries(limit=5){
+    if(translationBusy)return;
+    if(!aiConfig.apiKey.trim()){setNotice("بۆ وەرگێڕانی batch، API Key زیاد بکە.");setSettingsOpen(true);return;}
+    const pending=sourceIndex.filter(x=>!summaryIdSet.has(x.id)).slice(0,Math.max(1,Math.min(25,limit)));
+    if(!pending.length){setNotice("هەموو سەرچاوە بەردەستەکان پوختەی سۆرانییان هەیە ✓");return;}
+    translationStopRef.current=false;
+    setTranslationBusy(true);
+    setTranslationProgress({done:0,total:pending.length});
+    let done=0;
+    try{
+      for(const item of pending){
+        if(translationStopRef.current)break;
+        try{await translateSourceSummaryId(item.id);}catch{}
+        done++;
+        setTranslationProgress({done,total:pending.length});
+      }
+    }finally{
+      setTranslationBusy(false);
+      translationStopRef.current=false;
+    }
+  }
+
   async function saveAndTestAI(){
     try{
       await testAIConfig(aiConfig);
