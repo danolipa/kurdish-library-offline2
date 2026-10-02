@@ -1,6 +1,12 @@
 name: Sync public book metadata
 
 on:
+  push:
+    paths:
+      - "scripts/import-openlibrary.mjs"
+      - "scripts/build-public-data-pack.mjs"
+      - "scripts/apply-public-data-pack.mjs"
+      - ".github/workflows/public-data-sync.yml"
   workflow_dispatch:
     inputs:
       limit:
