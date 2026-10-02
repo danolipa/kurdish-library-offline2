@@ -1,0 +1,1 @@
+import React from"react";import{detectDirection}from"../lib/rtlLayoutEngine";export default function AdaptiveReader({text}:{text:string}){const d=detectDirection(text);return <article dir={d==="auto"?"auto":d} style={{whiteSpace:"pre-wrap",lineHeight:1.9}}>{text}</article>}
