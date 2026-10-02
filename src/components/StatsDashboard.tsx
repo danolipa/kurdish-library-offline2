@@ -1,0 +1,1 @@
+import React from"react";import{currentStreak,getReadingStats}from"../lib/readingStats";export default function StatsDashboard(){const s=getReadingStats();return <section dir="rtl"><h2>📊 ئاماری خوێندنەوە</h2><p>کاتی خوێندنەوە: {s.minutes} خولەک</p><p>زنجیرە: {currentStreak()} ڕۆژ</p><p>کتێبە تەواوکراوەکان: {s.books}</p></section>}
