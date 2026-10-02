@@ -91,14 +91,21 @@ jobs:
         run: |
           if [ -n "$GROQ_API_KEY" ]; then npm run sources:translate; else echo "GROQ_API_KEY is not configured; skipping translation."; fi
       - run: npm run sources:merge
-      - name: Commit SQuALITY data
+      - name: Publish SQuALITY changes on latest main
         run: |
+          set -e
           git config user.name "kurdish-library-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet && git diff --cached --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
+            git pull --rebase origin main
+          else
+            git stash push --include-untracked -m "generated-squality-data"
+            git pull --rebase origin main
+            git stash pop
+          fi
           git add content/external/squality-plot.json content/open-sources src/data/summaries.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Import and translate SQuALITY summaries"
-          git pull --rebase origin main
           git push
 
   import-cmu:
@@ -126,12 +133,19 @@ jobs:
           OPEN_SOURCE_TRANSLATE_SOURCE: "CMU Book Summary Dataset"
         run: npm run sources:translate
       - run: npm run sources:merge
-      - name: Commit CMU data
+      - name: Publish CMU changes on latest main
         run: |
+          set -e
           git config user.name "kurdish-library-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet && git diff --cached --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
+            git pull --rebase origin main
+          else
+            git stash push --include-untracked -m "generated-cmu-data"
+            git pull --rebase origin main
+            git stash pop
+          fi
           git add content/external/cmu content/open-sources src/data/summaries.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Import and translate CMU book-summary batch"
-          git pull --rebase origin main
           git push
