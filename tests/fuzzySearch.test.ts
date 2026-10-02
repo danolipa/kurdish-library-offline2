@@ -1,0 +1,1 @@
+import{describe,it,expect}from"vitest";import{normalizeKurdish,fuzzyMatch}from"../src/lib/fuzzySearch";describe("fuzzySearch",()=>{it("normalizes Arabic/Kurdish variants",()=>expect(normalizeKurdish("كك")).toBe("کک"));it("finds a close query",()=>expect(fuzzyMatch("کتێب","کتێبخانە")).toBe(true))})
