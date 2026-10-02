@@ -20,3 +20,7 @@ Four Google Drive folders were supplied by the project owner. Their contents mus
 
 ## Target
 Android 7+ where practical, with emphasis on low-memory phones.
+
+## Enhanced foundation
+
+This release adds offline caching, accessibility hooks, Kurdish fuzzy search, reading-position persistence, backup/export helpers, OCR worker support, theme infrastructure, reader UX components, and CI tests while preserving the existing React 19 + Vite 7 application structure.
