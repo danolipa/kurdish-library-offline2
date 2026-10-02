@@ -1,0 +1,1 @@
+export type Footnote={id:string;label:string;text:string};const notes=new Map<string,Footnote>();export function addFootnote(n:Footnote){notes.set(n.id,n)}export function getFootnote(id:string){return notes.get(id)}
