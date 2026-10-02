@@ -1,0 +1,1 @@
+.page-flip-viewer{display:flex;flex-direction:column;min-height:300px}.page-viewport{overflow:hidden;flex:1}.page-progress-fill{height:4px;background:var(--accent-primary,#2563eb)}.page-nav{display:flex;justify-content:center;gap:10px;padding:8px}
