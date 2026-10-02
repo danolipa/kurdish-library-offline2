@@ -46,6 +46,7 @@ for (const row of rows.filter(x=>!String(done.get(x.id)?.textKu||"").trim()).sli
   if (!text) throw new Error("Empty translation response");
   done.set(row.id,{
     ...row,
+    textKu: text,
     summaryKu: text,
     translatedAt: new Date().toISOString(),
     targetLanguage: "ckb"
