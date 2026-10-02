@@ -255,6 +255,10 @@ function App(){
   const totalSummaryPages=Math.max(1,Math.ceil(summaries.length/summaryPageSize));
   const safeSummaryPage=Math.min(summaryPage,totalSummaryPages);
   const pagedSummaries=summaries.slice((safeSummaryPage-1)*summaryPageSize,safeSummaryPage*summaryPageSize);
+  const sourceIndex=useMemo(()=>sourceManifest?.packs.flatMap(pack=>pack.ids.map(id=>({id,file:pack.file})))||[],[sourceManifest]);
+  const sourceIdSet=useMemo(()=>new Set(sourceIndex.map(x=>x.id)),[sourceIndex]);
+  const summaryIdSet=useMemo(()=>new Set(summaries.map(x=>x.id)),[summaries]);
+  const translatedSourceCount=useMemo(()=>sourceIndex.reduce((n,x)=>n+(summaryIdSet.has(x.id)?1:0),0),[sourceIndex,summaryIdSet]);
 
   async function runAI(prompt:string){
     setAiBusy(true); setAiResult("");
