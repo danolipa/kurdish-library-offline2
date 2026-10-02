@@ -28,7 +28,15 @@
     "sources:squality:merge": "node scripts/squality-to-open-sources.mjs",
     "content:pack-summaries": "node scripts/build-summary-packs.mjs",
     "cmu:merge-library": "node scripts/cmu-merge-library.mjs",
-    "content:pack-source-summaries": "node scripts/build-source-summary-packs.mjs"
+    "content:pack-source-summaries": "node scripts/build-source-summary-packs.mjs",
+    "convert-covers": "node scripts/convert-covers-to-webp.mjs",
+    "generate-thumbnails": "node scripts/generate-thumbnails.mjs",
+    "subset-fonts": "node scripts/subset-fonts.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build:metadata": "node scripts/build-metadata.mjs",
+    "compress-catalog": "node scripts/compress-catalog.mjs",
+    "split-assets": "node scripts/split-assets.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",
@@ -42,13 +50,21 @@
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
     "tesseract.js": "^6.0.1",
-    "@capgo/capacitor-social-login": "^7.0.0"
+    "@capgo/capacitor-social-login": "^7.0.0",
+    "idb": "^8.0.0",
+    "pako": "^2.1.0"
   },
   "overrides": {
     "baseline-browser-mapping": "2.11.26"
   },
   "devDependencies": {
     "@types/react": "^19.1.13",
-    "@types/react-dom": "^19.1.9"
+    "@types/react-dom": "^19.1.9",
+    "glob": "^11.0.0",
+    "sharp": "^0.34.3",
+    "subset-font": "^12.0.0",
+    "vitest": "^3.2.4",
+    "jsdom": "^26.1.0",
+    "@types/node": "^24.3.0"
   }
 }
