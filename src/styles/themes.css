@@ -1,0 +1,39 @@
+:root {
+  --kl-bg: #ffffff;
+  --kl-surface: #f7f7f7;
+  --kl-text: #171717;
+  --kl-muted: #666666;
+  --kl-border: #dddddd;
+  --kl-accent: #2563eb;
+}
+:root[data-theme="dark"] {
+  --kl-bg: #121212;
+  --kl-surface: #1e1e1e;
+  --kl-text: #f5f5f5;
+  --kl-muted: #b5b5b5;
+  --kl-border: #383838;
+  --kl-accent: #7aa2ff;
+}
+:root[data-theme="sepia"] {
+  --kl-bg: #f4ecd8;
+  --kl-surface: #eadfca;
+  --kl-text: #3f3425;
+  --kl-muted: #756550;
+  --kl-border: #d3c3a8;
+  --kl-accent: #8a5a24;
+}
+:root[data-theme="eink"] {
+  --kl-bg: #f5f5f0;
+  --kl-surface: #eeeeea;
+  --kl-text: #111111;
+  --kl-muted: #444444;
+  --kl-border: #bdbdb8;
+  --kl-accent: #222222;
+}
+html, body, #root {
+  background: var(--kl-bg);
+  color: var(--kl-text);
+}
+button, input, select, textarea {
+  color: inherit;
+}
