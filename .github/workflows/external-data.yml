@@ -18,6 +18,8 @@ on:
 permissions:
   contents: write
 
+# SQuALITY can be run safely from a push whose commit message contains [populate-squality].
+
 concurrency:
   group: external-book-data
   cancel-in-progress: false
