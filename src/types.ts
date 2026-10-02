@@ -16,6 +16,9 @@ export type Book = {
   sizeBytes?: number;
   addedAt: number;
   source: "bundle" | "import";
+  sourceUrl?: string;
+  rights?: string;
+  metadata?: Record<string, string | number | boolean>;
 };
 
 export type Highlight = {
