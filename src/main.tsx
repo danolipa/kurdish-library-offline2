@@ -149,12 +149,13 @@ function App(){
     if(!googleClientId){setNotice("VITE_GOOGLE_WEB_CLIENT_ID هێشتا ڕێک نەخراوە.");return;}
     try{
       const res:any=await SocialLogin.login({provider:"google",options:{scopes:["email","profile"],filterByAuthorizedAccounts:false}});
-      const profile:GoogleProfile={id:res?.user?.id||res?.id||"",email:res?.user?.email||res?.email,name:res?.user?.name||res?.user?.displayName||res?.name||res?.displayName,picture:res?.user?.imageUrl||res?.user?.picture||res?.picture};
+      const gp=res?.result?.profile||{};
+      const profile:GoogleProfile={id:gp.id||"",email:gp.email||undefined,name:gp.name||undefined,picture:gp.imageUrl||undefined};
       setGoogleProfile(profile); localStorage.setItem("kurdish-library-google-profile",JSON.stringify(profile));
       setNotice("بە Google چوویتە ژوورەوە ✓");
     }catch(e:any){setNotice("چوونەژوورەوەی Google سەرکەوتوو نەبوو: "+(e?.message||"هەڵە"))}
   }
-  async function googleSignOut(){try{await SocialLogin.logout({provider:"google"} as any);}catch{} setGoogleProfile(null); localStorage.removeItem("kurdish-library-google-profile"); setNotice("لە Google دەرچوویت.");}
+  async function googleSignOut(){try{await SocialLogin.logout({provider:"google"});}catch{} setGoogleProfile(null); localStorage.removeItem("kurdish-library-google-profile"); setNotice("لە Google دەرچوویت.");}
   async function persistNote(note: Note){
     await saveNote(note);
     setNotes(await getNotes());
