@@ -1,7 +1,7 @@
 import type { Author, Book, BookState, Highlight, Quote, Summary, Note } from "./types";
 
 const DB_NAME = "kurdish-library";
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -18,6 +18,7 @@ function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains("text")) db.createObjectStore("text");
       if (!db.objectStoreNames.contains("highlights")) db.createObjectStore("highlights", { keyPath: "id" });
       if (!db.objectStoreNames.contains("notes")) db.createObjectStore("notes", { keyPath: "id" });
+      if (!db.objectStoreNames.contains("aiHistory")) db.createObjectStore("aiHistory", { keyPath: "id" });
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
