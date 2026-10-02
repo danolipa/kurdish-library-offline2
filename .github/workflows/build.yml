@@ -28,6 +28,111 @@ jobs:
       - run: npx tsc --noEmit
       - run: rm -rf android && npx cap add android
       - run: npx cap sync android
+      - name: Set Android app version from package.json
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, re
+          version=json.loads(Path("package.json").read_text())["version"]
+          m=re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version)
+          if not m:
+              raise SystemExit("Unsupported app version: "+version)
+          major,minor,patch=map(int,m.groups())
+          code=major*10000+minor*100+patch
+          p=Path("android/app/build.gradle")
+          s=p.read_text()
+          s=re.sub(r'(?m)^(\s*versionCode\s+)\d+\s*        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path("android/build.gradle")
+          s = root.read_text()
+          s = re.sub(r"com\.android\.tools\.build:gradle:[0-9.]+", "com.android.tools.build:gradle:8.9.1", s)
+          root.write_text(s)
+
+          variables = Path("android/variables.gradle")
+          v = variables.read_text()
+          v = re.sub(r"(?m)^\s*minSdkVersion\s*=\s*\d+\s*$", "    minSdkVersion = 24", v)
+          v = re.sub(r"(?m)^\s*compileSdkVersion\s*=\s*\d+\s*$", "    compileSdkVersion = 36", v)
+          v = re.sub(r"(?m)^\s*targetSdkVersion\s*=\s*\d+\s*$", "    targetSdkVersion = 35", v)
+          variables.write_text(v)
+          check = variables.read_text()
+          if "compileSdkVersion = 36" not in check:
+              raise SystemExit("compileSdkVersion was not set to 36")
+          PY
+      - name: Align AndroidX browser dependency
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/build.gradle")
+          s = p.read_text()
+          block = """\nallprojects {\n  configurations.configureEach {\n    resolutionStrategy.force("androidx.browser:browser:1.9.0")\n  }\n}\n"""
+          if "androidx.browser:browser:1.9.0" not in s:
+              p.write_text(s.rstrip() + block)
+          PY
+      - name: Build Android debug APK
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kurdish-library-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+, r'\g<1>'+str(code), s, count=1)
+          s=re.sub(r'(?m)^(\s*versionName\s+)["\'][^"\']+["\']\s*        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path("android/build.gradle")
+          s = root.read_text()
+          s = re.sub(r"com\.android\.tools\.build:gradle:[0-9.]+", "com.android.tools.build:gradle:8.9.1", s)
+          root.write_text(s)
+
+          variables = Path("android/variables.gradle")
+          v = variables.read_text()
+          v = re.sub(r"(?m)^\s*minSdkVersion\s*=\s*\d+\s*$", "    minSdkVersion = 24", v)
+          v = re.sub(r"(?m)^\s*compileSdkVersion\s*=\s*\d+\s*$", "    compileSdkVersion = 36", v)
+          v = re.sub(r"(?m)^\s*targetSdkVersion\s*=\s*\d+\s*$", "    targetSdkVersion = 35", v)
+          variables.write_text(v)
+          check = variables.read_text()
+          if "compileSdkVersion = 36" not in check:
+              raise SystemExit("compileSdkVersion was not set to 36")
+          PY
+      - name: Align AndroidX browser dependency
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/build.gradle")
+          s = p.read_text()
+          block = """\nallprojects {\n  configurations.configureEach {\n    resolutionStrategy.force("androidx.browser:browser:1.9.0")\n  }\n}\n"""
+          if "androidx.browser:browser:1.9.0" not in s:
+              p.write_text(s.rstrip() + block)
+          PY
+      - name: Build Android debug APK
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: dist/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kurdish-library-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+, r'\g<1>"'+version+'"', s, count=1)
+          if ("versionName \""+version+"\"") not in s:
+              raise SystemExit("versionName was not updated")
+          p.write_text(s)
+          PY
       - name: Configure Android build toolchain
         run: |
           python3 - <<'PY'
