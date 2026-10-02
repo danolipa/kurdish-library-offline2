@@ -135,9 +135,21 @@ function App(){
     setFileUrl(null);
     const s=await getBookState(book.id);
     setStates(x=>({...x,[book.id]:s}));
-    if(book.source==="import"){
-      const blob=await getBookFile(book.id);
-      if(blob) { setFileUrl(URL.createObjectURL(blob)); if(book.format==="pdf"){ extractPdfText(blob,book.id,setExtractedText,setNotice); } if(book.format==="txt"||book.format==="html"){ const raw=await blob.text(); const text=book.format==="html"?raw.replace(/<[^>]+>/g," "):raw; (window as any).__kurdishLibraryText={...(window as any).__kurdishLibraryText,[book.id]:text}; await saveExtractedText(book.id,text); setExtractedText(x=>({...x,[book.id]:text})); } }
+    let blob=await getBookFile(book.id);
+    if(!blob && book.filePath && /^https?:\\/\\//.test(book.filePath)){
+      try{
+        setNotice("کتێبەکە یەکەم جار دادەبەزێت…");
+        const response=await fetch(book.filePath);
+        if(!response.ok) throw new Error("download failed");
+        blob=await response.blob();
+        await saveBook(book,blob);
+        setNotice("کتێبەکە بۆ ئۆفلاین پاشەکەوت کرا ✓");
+      }catch{setNotice("نەتوانرا فایلەکە لە سەرچاوەکە وەربگیرێت");}
+    }
+    if(blob) {
+      setFileUrl(URL.createObjectURL(blob));
+      if(book.format==="pdf"){ extractPdfText(blob,book.id,setExtractedText,setNotice); }
+      if(book.format==="txt"||book.format==="html"){ const raw=await blob.text(); const text=book.format==="html"?raw.replace(/<[^>]+>/g," "):raw; (window as any).__kurdishLibraryText={...(window as any).__kurdishLibraryText,[book.id]:text}; await saveExtractedText(book.id,text); setExtractedText(x=>({...x,[book.id]:text})); }
     }
   }
   function closeReader(){ if(fileUrl) URL.revokeObjectURL(fileUrl); setFileUrl(null); setSelected(null); }
