@@ -1,9 +1,9 @@
 import fs from "node:fs/promises";
 const key=process.env.GROQ_API_KEY;if(!key)throw new Error("GROQ_API_KEY is required; keep it in GitHub Actions Secrets.");
 const model=process.env.GROQ_MODEL||"openai/gpt-oss-120b";
-const limit=Math.max(1,Number(process.env.OPEN_SOURCE_TRANSLATE_LIMIT||"10"));
+const limit=Math.max(1,Number(process.env.OPEN_SOURCE_TRANSLATE_LIMIT||"10"));\nconst sourceFilter=String(process.env.OPEN_SOURCE_TRANSLATE_SOURCE||"").trim();
 const input="content/open-sources/imported-summaries.json", output="content/open-sources/translated-summaries.json";
-const rows=JSON.parse(await fs.readFile(input,"utf8")).filter(x=>x.textOriginal&&!x.textKu).slice(0,limit);
+const rows=JSON.parse(await fs.readFile(input,"utf8")).filter(x=>x.textOriginal&&!x.textKu&&(sourceFilter?String(x.source||"")===sourceFilter:true)).slice(0,limit);
 const existing=JSON.parse(await fs.readFile(output,"utf8").catch(()=>"[]"));
 const map=new Map(existing.map(x=>[x.id,x]));
 const out=[...map.values()];
