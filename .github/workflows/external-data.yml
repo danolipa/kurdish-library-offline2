@@ -16,17 +16,58 @@ on:
   schedule:
     - cron: "15 2 * * 0"
     - cron: "45 2 * * 3"
+    - cron: "15 2 * * 6"
 
 permissions:
   contents: write
 
 # SQuALITY can be run safely from a push whose commit message contains [populate-squality].
+# Public library expansion can be run from a push whose commit message contains [populate-library].
 
 concurrency:
   group: external-book-data
   cancel-in-progress: false
 
 jobs:
+
+  populate-public-library:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[populate-library]')) || (github.event_name == 'schedule' && github.event.schedule == '15 2 * * 6')
+    env:
+      HAS_GROQ: ${{ secrets.GROQ_API_KEY != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Import Open Library metadata
+        env:
+          OPENLIBRARY_LIMIT: "900"
+          OPENLIBRARY_QUERIES: "classic literature,philosophy,psychology,science,history,education,business,spirituality,productivity,leadership,technology,health"
+        run: npm run public-data:openlibrary
+      - run: npm run public-data:pack
+      - run: npm run public-data:apply
+      - name: Import open book summary sources
+        run: npm run sources:import
+      - name: Translate public summaries to Sorani
+        if: env.HAS_GROQ == 'true'
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: openai/gpt-oss-120b
+          OPEN_SOURCE_TRANSLATE_LIMIT: "100"
+        run: npm run sources:translate
+      - run: npm run sources:merge
+      - run: npm run content:validate
+      - name: Commit public library expansion
+        run: |
+          git config user.name "kurdish-library-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add content/public-sources src/data/library.json content/open-sources/imported-summaries.json content/open-sources/translated-summaries.json src/data/summaries.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Expand public library metadata and summaries"
+          git pull --rebase origin main
+          git push
   import-squality:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[populate-squality]')) || (github.event_name == 'schedule' && github.event.schedule == '45 2 * * 3')
     env:
