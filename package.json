@@ -13,7 +13,8 @@
     "gutenberg:queue": "node scripts/gutenberg-build-queue.mjs",
     "gutenberg:batch": "node scripts/gutenberg-summary-batches.mjs",
     "external:squality": "node scripts/import-squality.mjs",
-    "external:translate": "node scripts/translate-external.mjs"
+    "external:translate": "node scripts/translate-external.mjs",
+    "external:merge": "node scripts/merge-external-summaries.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",
