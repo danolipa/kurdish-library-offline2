@@ -35,16 +35,18 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import json, re
-          version=json.loads(Path('package.json').read_text())['version']
-          m=re.fullmatch(r'(\\d+)\\.(\\d+)\\.(\\d+)',version)
-          if not m: raise SystemExit('Unsupported app version: '+version)
-          major,minor,patch=map(int,m.groups())
-          code=major*10000+minor*100+patch
-          p=Path('android/app/build.gradle')
-          s=p.read_text()
-          s,n1=re.subn(r'(?m)^(\\s*versionCode\\s+)\\d+\\s*$',r'\\g<1>'+str(code),s,count=1)
-          s,n2=re.subn(r'(?m)^(\\s*versionName\\s+)["\\'][^"\\']+["\\']\\s*$',r'\\g<1>"'+version+'"',s,count=1)
-          if n1 != 1 or n2 != 1: raise SystemExit('Could not update Android version fields')
+          version = json.loads(Path("package.json").read_text())["version"]
+          m = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version)
+          if not m:
+              raise SystemExit("Unsupported app version: " + version)
+          major, minor, patch = map(int, m.groups())
+          code = major * 10000 + minor * 100 + patch
+          p = Path("android/app/build.gradle")
+          s = p.read_text()
+          s, n1 = re.subn(r"(?m)^(\s*versionCode\s+)\d+\s*$", r"\g<1>" + str(code), s, count=1)
+          s, n2 = re.subn(r'(?m)^(\s*versionName\s+)"[^"]*"\s*$', r'\g<1>"' + version + '"', s, count=1)
+          if n1 != 1 or n2 != 1:
+              raise SystemExit("Could not update Android version fields")
           p.write_text(s)
           PY
       - name: Configure Android build toolchain
@@ -52,34 +54,34 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-          root=Path('android/build.gradle')
-          s=root.read_text()
-          s=re.sub(r'com\\.android\\.tools\\.build:gradle:[0-9.]+','com.android.tools.build:gradle:8.9.1',s)
+          root = Path("android/build.gradle")
+          s = root.read_text()
+          s = re.sub(r"com\.android\.tools\.build:gradle:[0-9.]+", "com.android.tools.build:gradle:8.9.1", s)
           root.write_text(s)
-          variables=Path('android/variables.gradle')
-          v=variables.read_text()
-          v=re.sub(r'(?m)^\\s*minSdkVersion\\s*=\\s*\\d+\\s*$','    minSdkVersion = 24',v)
-          v=re.sub(r'(?m)^\\s*compileSdkVersion\\s*=\\s*\\d+\\s*$','    compileSdkVersion = 36',v)
-          v=re.sub(r'(?m)^\\s*targetSdkVersion\\s*=\\s*\\d+\\s*$','    targetSdkVersion = 35',v)
+          variables = Path("android/variables.gradle")
+          v = variables.read_text()
+          v = re.sub(r"(?m)^\s*minSdkVersion\s*=\s*\d+\s*$", "    minSdkVersion = 24", v)
+          v = re.sub(r"(?m)^\s*compileSdkVersion\s*=\s*\d+\s*$", "    compileSdkVersion = 36", v)
+          v = re.sub(r"(?m)^\s*targetSdkVersion\s*=\s*\d+\s*$", "    targetSdkVersion = 35", v)
           variables.write_text(v)
-          if 'compileSdkVersion = 36' not in v: raise SystemExit('compileSdkVersion 36 not configured')
+          if "compileSdkVersion = 36" not in v:
+              raise SystemExit("compileSdkVersion 36 not configured")
           PY
       - name: Align AndroidX browser dependency
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('android/build.gradle')
-          s=p.read_text()
-          marker='allprojects {'
-          block='''
+          p = Path("android/build.gradle")
+          s = p.read_text()
+          block = """
           allprojects {
             configurations.configureEach {
               resolutionStrategy.force("androidx.browser:browser:1.9.0")
             }
           }
-          '''
-          if 'androidx.browser:browser:1.9.0' not in s:
-            p.write_text(s.rstrip()+'\n'+block)
+          """
+          if "androidx.browser:browser:1.9.0" not in s:
+              p.write_text(s.rstrip() + "\n" + block)
           PY
       - name: Build Android debug APK
         run: |
