@@ -11,7 +11,9 @@
     "content:index": "node scripts/build-content-index.mjs content src/data",
     "content:validate": "node scripts/validate-library.mjs",
     "gutenberg:queue": "node scripts/gutenberg-build-queue.mjs",
-    "gutenberg:batch": "node scripts/gutenberg-summary-batches.mjs"
+    "gutenberg:batch": "node scripts/gutenberg-summary-batches.mjs",
+    "external:squality": "node scripts/import-squality.mjs",
+    "external:translate": "node scripts/translate-external.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",
