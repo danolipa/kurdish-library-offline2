@@ -10,7 +10,7 @@ try { existing = JSON.parse(await fs.readFile(libraryPath, "utf8")); } catch {}
 const byId = new Map(existing.map(b => [b.id, b]));
 for (const b of pack.books || []) {
   const old = byId.get(b.id);
-  byId.set(b.id, old ? { ...old, ...b, summaryKu: old.summaryKu || b.summaryKu || "" } : b);
+  byId.set(b.id, old ? { ...old, ...b, addedAt: old.addedAt || b.addedAt || Date.now(), summaryKu: old.summaryKu || b.summaryKu || "" } : b);
 }
 const merged = [...byId.values()];
 await fs.writeFile(libraryPath, JSON.stringify(merged, null, 2) + "\n", "utf8");
