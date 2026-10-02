@@ -40,6 +40,7 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GROQ_MODEL: openai/gpt-oss-120b
           OPEN_SOURCE_TRANSLATE_LIMIT: "10"
+          OPEN_SOURCE_TRANSLATE_SOURCE: "SQuALITY v1.3"
         run: npm run sources:translate
       - run: npm run sources:merge
       - name: Commit SQuALITY data
@@ -73,6 +74,7 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GROQ_MODEL: openai/gpt-oss-120b
           OPEN_SOURCE_TRANSLATE_LIMIT: "25"
+          OPEN_SOURCE_TRANSLATE_SOURCE: "CMU Book Summary Dataset"
         run: npm run sources:translate
       - run: npm run sources:merge
       - name: Commit CMU data
