@@ -109,7 +109,7 @@ jobs:
           git push
 
   import-cmu:
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '15 2 * * 0')
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[populate-cmu]')) || (github.event_name == 'schedule' && github.event.schedule == '15 2 * * 0')
     env:
       HAS_GROQ: ${{ secrets.GROQ_API_KEY != '' }}
     runs-on: ubuntu-latest
@@ -122,8 +122,9 @@ jobs:
       - run: npm run external:cmu
         env:
           CMU_OFFSET: ${{ inputs.cmu_offset || '' }}
-          CMU_LIMIT: ${{ inputs.cmu_limit || '1000' }}
+          CMU_LIMIT: ${{ inputs.cmu_limit || '1300' }}
       - run: npm run sources:cmu:queue-merge
+      - run: npm run cmu:merge-library
       - name: Translate CMU summaries
         if: env.HAS_GROQ == 'true'
         env:
