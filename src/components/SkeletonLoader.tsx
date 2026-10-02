@@ -1,0 +1,1 @@
+import React from"react";export default function SkeletonLoader({count=6}:{count?:number}){return <div className="skeleton-list" aria-busy="true">{Array.from({length:count},(_,i)=><div className="skeleton" key={i}/>)}</div>}
