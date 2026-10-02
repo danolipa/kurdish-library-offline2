@@ -24,5 +24,6 @@ for await(const line of createInterface({input:createReadStream(source),crlfDela
  if(queue.length>=LIMIT)break;
 }
 await fs.mkdir("content/external/cmu",{recursive:true});
-await fs.writeFile("content/external/cmu/cursor.json",JSON.stringify({offset:OFFSET+queue.length,updatedAt:new Date().toISOString()},null,2)+"\\n");\nawait fs.writeFile(OUT,JSON.stringify({generatedAt:new Date().toISOString(),offset:OFFSET,limit:LIMIT,totalQueued:queue.length,source:SOURCE_URL,license:"CC BY-SA 3.0",items:queue},null,2)+"\n");
+await fs.writeFile("content/external/cmu/cursor.json",JSON.stringify({offset:OFFSET+queue.length,updatedAt:new Date().toISOString()},null,2)+"\n");
+await fs.writeFile(OUT,JSON.stringify({generatedAt:new Date().toISOString(),offset:OFFSET,limit:LIMIT,totalQueued:queue.length,source:SOURCE_URL,license:"CC BY-SA 3.0",items:queue},null,2)+"\n");
 console.log(`Queued ${queue.length} CMU books from offset ${OFFSET}.`);
