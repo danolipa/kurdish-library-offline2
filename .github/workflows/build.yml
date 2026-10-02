@@ -22,6 +22,8 @@ jobs:
           distribution: temurin
           java-version: "21"
       - run: npm install --no-audit --no-fund
+        env:
+          VITE_GOOGLE_WEB_CLIENT_ID: ${{ secrets.VITE_GOOGLE_WEB_CLIENT_ID }}
       - run: npm run build
       - run: npx tsc --noEmit
       - run: rm -rf android && npx cap add android
