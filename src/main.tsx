@@ -140,6 +140,11 @@ function App(){
   const [aiHistory,setAiHistory]=useState<Awaited<ReturnType<typeof getAIHistory>>>([]);
   const [studyOpen,setStudyOpen]=useState(false);
   const [studyBusy,setStudyBusy]=useState(false);
+  const [sourceManifest,setSourceManifest]=useState<SourceSummaryManifest|null>(null);
+  const [translationBusy,setTranslationBusy]=useState(false);
+  const [translationProgress,setTranslationProgress]=useState({done:0,total:0});
+  const translationStopRef=useRef(false);
+  const sourcePackCache=useRef(new Map<string,SourceSummaryRow[]>());
   const [googleProfile,setGoogleProfile]=useState<GoogleProfile|null>(null);
   const [googleClientId,setGoogleClientId]=useState(()=>localStorage.getItem("kurdish-library-google-client-id")||(import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID||"").trim());
 
@@ -181,7 +186,7 @@ function App(){
     setNotice("تێبینی سڕایەوە.");
   }
 
-  useEffect(()=>{getNotes().then(setNotes).catch(()=>{}); getHighlights().then(setHighlights).catch(()=>{}); getAIHistory().then(setAiHistory).catch(()=>{}); try{const p=localStorage.getItem("kurdish-library-google-profile");if(p)setGoogleProfile(JSON.parse(p));}catch{} },[]);
+  useEffect(()=>{fetch("/data/source-summaries/manifest.json").then(r=>r.ok?r.json():null).then((manifest)=>{if(manifest?.packs?.length)setSourceManifest(manifest);}).catch(()=>{}); getNotes().then(setNotes).catch(()=>{}); getHighlights().then(setHighlights).catch(()=>{}); getAIHistory().then(setAiHistory).catch(()=>{}); try{const p=localStorage.getItem("kurdish-library-google-profile");if(p)setGoogleProfile(JSON.parse(p));}catch{} },[]);
   useEffect(()=>{
     const bb=(bundledBooks as Book[]); const bq=(bundledQuotes as Quote[]); const ba=(bundledAuthors as Author[]);
     setBooks(prev=>prev.length>3?prev:[...bb,...prev]); setQuotes(bq); setAuthors(ba);
