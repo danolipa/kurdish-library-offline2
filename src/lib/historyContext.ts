@@ -1,0 +1,1 @@
+export type HistoricalContext={title:string;period?:string;text:string};const data:HistoricalContext[]=[];export function addHistoricalContext(x:HistoricalContext){data.push(x)}export function getHistoricalContext(title:string){return data.find(x=>x.title===title)}
