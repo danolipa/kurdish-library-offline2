@@ -1,0 +1,1 @@
+import React from"react";import{splitDual}from"../lib/dualTextCompare";export default function DualTextReader({original,translation}:{original:string;translation:string}){return <div dir="rtl">{splitDual(original,translation).map((x,i)=><section key={i}><p dir="ltr">{x.original}</p><p>{x.translation}</p></section>)}</div>}
