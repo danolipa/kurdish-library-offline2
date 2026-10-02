@@ -1,0 +1,50 @@
+name: External Public Data Ingestion
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "import or translate"
+        required: true
+        default: "import"
+        type: choice
+        options:
+          - import
+          - translate
+      limit:
+        description: "Number of summaries to translate when mode=translate"
+        required: false
+        default: "10"
+
+permissions:
+  contents: write
+
+jobs:
+  external:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm run external:squality
+      - name: Translate to Sorani
+        if: inputs.mode == 'translate'
+        env:
+          GROQ_API_KEY: \${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: \${{ vars.GROQ_MODEL }}
+          EXTERNAL_LIMIT: \${{ inputs.limit }}
+        run: |
+          npm run external:translate
+          npm run external:merge
+      - name: Commit imported data
+        run: |
+          git config user.name "kurdish-library-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add content/external src/data/summaries.json
+          if git diff --cached --quiet; then
+            echo "No data changes."
+            exit 0
+          fi
+          git commit -m "Import licensed public book summary data"
+          git push
