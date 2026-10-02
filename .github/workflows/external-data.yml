@@ -35,7 +35,7 @@ jobs:
       - run: npm run external:squality
       - run: npm run sources:squality:merge
       - name: Translate SQuALITY summaries
-        if: env.HAS_GROQ == 'true'
+        if: ${{ secrets.GROQ_API_KEY != '' }}
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GROQ_MODEL: openai/gpt-oss-120b
