@@ -109,14 +109,6 @@ function App(){
   const recentBooks=useMemo(()=>[...books].sort((a,b)=>(states[b.id]?.lastReadAt||0)-(states[a.id]?.lastReadAt||0)).slice(0,12),[books,states]);
   const resumeBooks=useMemo(()=>recentBooks.filter(b=>(states[b.id]?.progress||0)>0).slice(0,6),[recentBooks,states]);
   const visibleBooks=tab==="favorites"?favoriteBooks:books;
-  const pageSize=viewMode==="small"?60:40;
-  const totalLibraryPages=Math.max(1,Math.ceil(filtered.length/pageSize));
-  const safeLibraryPage=Math.min(libraryPage,totalLibraryPages);
-  const pagedBooks=filtered.slice((safeLibraryPage-1)*pageSize,safeLibraryPage*pageSize);
-  const summaryPageSize=6;
-  const totalSummaryPages=Math.max(1,Math.ceil(summaries.length/summaryPageSize));
-  const safeSummaryPage=Math.min(summaryPage,totalSummaryPages);
-  const pagedSummaries=summaries.slice((safeSummaryPage-1)*summaryPageSize,safeSummaryPage*summaryPageSize);
   const filtered=useMemo(()=>{
     const q=query.trim().toLocaleLowerCase();
     return visibleBooks.filter(b=>{
@@ -128,6 +120,15 @@ function App(){
       return metadata.includes(q) || textMatches.has(b.id);
     });
   },[visibleBooks,query,category,notes,textMatches]);
+
+  const pageSize=viewMode==="small"?60:40;
+  const totalLibraryPages=Math.max(1,Math.ceil(filtered.length/pageSize));
+  const safeLibraryPage=Math.min(libraryPage,totalLibraryPages);
+  const pagedBooks=filtered.slice((safeLibraryPage-1)*pageSize,safeLibraryPage*pageSize);
+  const summaryPageSize=6;
+  const totalSummaryPages=Math.max(1,Math.ceil(summaries.length/summaryPageSize));
+  const safeSummaryPage=Math.min(summaryPage,totalSummaryPages);
+  const pagedSummaries=summaries.slice((safeSummaryPage-1)*summaryPageSize,safeSummaryPage*summaryPageSize);
 
   async function openBook(book:Book){
     setSelected(book);
