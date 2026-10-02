@@ -6,7 +6,6 @@ import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import ePub from "epubjs";
 import type { Book, Quote, Summary, Author, Highlight, Note } from "./types";
 import bundledBooks from "./data/library.json";
-import bundledSummaries from "./data/summaries.json";
 import bundledQuotes from "./data/quotes.json";
 import bundledAuthors from "./data/authors.json";
 import { getBookFile, getBookState, getBooks, getSummaries, getQuotes, getAuthors, saveBook, saveBookState, saveProgress, saveSummaries, saveQuotes, saveAuthors, getExtractedText, saveExtractedText, searchExtractedText, getHighlights, saveHighlight, deleteHighlight, getNotes, saveNote, deleteNote } from "./storage";
@@ -82,9 +81,28 @@ function App(){
 
   useEffect(()=>{getNotes().then(setNotes).catch(()=>{}); getHighlights().then(setHighlights).catch(()=>{});},[]);
   useEffect(()=>{
-    const bb=(bundledBooks as Book[]); const bs=(bundledSummaries as Summary[]); const bq=(bundledQuotes as Quote[]); const ba=(bundledAuthors as Author[]);
-    setBooks(prev=>prev.length>3?prev:[...bb,...prev]); setSummaries(bs); setQuotes(bq); setAuthors(ba);
-    getBooks().then(saved=>{ if(saved.length) setBooks(saved); }); getSummaries().then(saved=>{if(saved.length)setSummaries(saved);}); getQuotes().then(saved=>{if(saved.length)setQuotes(saved);}); getAuthors().then(saved=>{if(saved.length)setAuthors(saved);});
+    const bb=(bundledBooks as Book[]); const bq=(bundledQuotes as Quote[]); const ba=(bundledAuthors as Author[]);
+    setBooks(prev=>prev.length>3?prev:[...bb,...prev]); setQuotes(bq); setAuthors(ba);
+    getBooks().then(saved=>{ if(saved.length) setBooks(saved); });
+    getQuotes().then(saved=>{if(saved.length)setQuotes(saved);});
+    getAuthors().then(saved=>{if(saved.length)setAuthors(saved);});
+    getSummaries().then(saved=>{
+      if(saved.length){ setSummaries(saved); return; }
+      fetch("/data/summaries/manifest.json")
+        .then(r=>r.ok?r.json():null)
+        .then(async manifest=>{
+          if(!manifest?.packs?.length) return;
+          const loaded:Summary[]=[];
+          for(let i=0;i<manifest.packs.length;i+=6){
+            const batch=manifest.packs.slice(i,i+6);
+            const parts=await Promise.all(batch.map((p:any)=>fetch("/data/summaries/"+p.file).then(r=>r.ok?r.json():[])));
+            for(const part of parts) if(Array.isArray(part)) loaded.push(...part);
+            if(loaded.length) setSummaries([...loaded]);
+          }
+          if(loaded.length) await saveSummaries(loaded);
+        })
+        .catch(()=>{});
+    }).catch(()=>{});
   },[]);
   useEffect(()=>{
     const q=query.trim();
