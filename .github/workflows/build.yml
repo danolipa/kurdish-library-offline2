@@ -28,6 +28,24 @@ jobs:
       - run: npx tsc --noEmit
       - run: rm -rf android && npx cap add android
       - run: npx cap sync android
+      - name: Configure Android build toolchain
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path("android/build.gradle")
+          s = root.read_text()
+          s = re.sub(r"com\.android\.tools\.build:gradle:[0-9.]+", "com.android.tools.build:gradle:8.9.1", s)
+          root.write_text(s)
+
+          variables = Path("android/variables.gradle")
+          v = variables.read_text()
+          v = re.sub(r"(?m)^\\s*minSdkVersion\\s*=\\s*\\d+\\s*$", "    minSdkVersion = 24", v)
+          v = re.sub(r"(?m)^\\s*compileSdkVersion\\s*=\\s*\\d+\\s*$", "    compileSdkVersion = 36", v)
+          v = re.sub(r"(?m)^\\s*targetSdkVersion\\s*=\\s*\\d+\\s*$", "    targetSdkVersion = 35", v)
+          variables.write_text(v)
+          PY
       - name: Align AndroidX browser dependency
         run: |
           python3 - <<'PY'
