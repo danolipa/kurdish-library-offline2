@@ -28,7 +28,7 @@ jobs:
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GROQ_MODEL: openai/gpt-oss-120b
-          OPEN_SOURCE_TRANSLATE_LIMIT: 10
+          OPEN_SOURCE_TRANSLATE_LIMIT: 25
         run: |
           if [ -z "$GROQ_API_KEY" ]; then
             echo "GROQ_API_KEY is not configured; skipping translation."
