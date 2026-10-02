@@ -1,0 +1,1 @@
+export function pinchDistance(a:Touch,b:Touch){return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)}export function clampZoom(z:number,min=.6,max=3){return Math.max(min,Math.min(max,z))}
