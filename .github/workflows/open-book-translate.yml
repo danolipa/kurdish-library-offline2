@@ -1,0 +1,41 @@
+name: Translate Open Book Summaries to Sorani
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "How many open-source summaries to translate"
+        required: false
+        default: "20"
+
+permissions:
+  contents: write
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Translate licensed open summaries
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: ${{ vars.GROQ_MODEL }}
+          OPEN_SOURCE_TRANSLATE_LIMIT: ${{ inputs.limit || '20' }}
+        run: npm run sources:translate
+      - name: Merge translated summaries
+        run: |
+          node -e "const fs=require('fs');const a=JSON.parse(fs.readFileSync('content/open-sources/imported-summaries.json','utf8'));const b=JSON.parse(fs.readFileSync('content/open-sources/imported-summaries-kurdish.json','utf8'));const m=new Map(a.map(x=>[x.id,x]));for(const x of b)m.set(x.id,x);fs.writeFileSync('content/open-sources/imported-summaries.json',JSON.stringify([...m.values()],null,2)+'\\n')"
+      - name: Merge into app data
+        run: npm run sources:merge
+      - name: Commit
+        run: |
+          git config user.name "kurdish-library-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add content/open-sources src/data/summaries.json
+          if git diff --cached --quiet; then echo "No translated changes."; exit 0; fi
+          git commit -m "Translate open book summaries to Sorani"
+          git push
