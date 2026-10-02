@@ -1,0 +1,1 @@
+export function splitDual(original:string,translation:string){const a=original.split(/\n+/).filter(Boolean),b=translation.split(/\n+/).filter(Boolean);return a.map((x,i)=>({original:x,translation:b[i]??""}))}
