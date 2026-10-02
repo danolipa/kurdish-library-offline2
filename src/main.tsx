@@ -19,6 +19,70 @@ const seed: Book[] = [
   { id:"demo-3", title:"مێژووی کورد", author:"کتێبخانەی کوردی", category:"مێژوو", language:"کوردی", format:"txt", summary:"نموونەیەک بۆ پۆلێنکردن و گەڕان.", addedAt:Date.now()-2, source:"bundle" }
 ];
 
+const AI_PROVIDERS = {
+  groq: { label:"Groq", base:"https://api.groq.com/openai/v1", defaultModel:"openai/gpt-oss-120b" },
+  openai: { label:"OpenAI", base:"https://api.openai.com/v1", defaultModel:"gpt-4o-mini" },
+  gemini: { label:"Google Gemini", base:"https://generativelanguage.googleapis.com/v1beta", defaultModel:"gemini-2.5-flash" },
+  openrouter: { label:"OpenRouter", base:"https://openrouter.ai/api/v1", defaultModel:"openai/gpt-4o-mini" },
+  anthropic: { label:"Anthropic", base:"https://api.anthropic.com/v1", defaultModel:"claude-3-5-haiku-latest" },
+  custom: { label:"Custom OpenAI-compatible", base:"", defaultModel:"" }
+} as const;
+type AIProvider = keyof typeof AI_PROVIDERS;
+type AIConfig = { provider:AIProvider; apiKey:string; model:string; baseUrl:string };
+
+function loadAIConfig():AIConfig{
+  try{
+    const raw=localStorage.getItem("kurdish-library-ai");
+    if(raw){
+      const x=JSON.parse(raw);
+      const provider=(x.provider in AI_PROVIDERS?x.provider:"groq") as AIProvider;
+      return {provider,apiKey:typeof x.apiKey==="string"?x.apiKey:"",model:typeof x.model==="string"?x.model:AI_PROVIDERS[provider].defaultModel,baseUrl:typeof x.baseUrl==="string"?x.baseUrl:""};
+    }
+  }catch{}
+  return {provider:"groq",apiKey:"",model:AI_PROVIDERS.groq.defaultModel,baseUrl:""};
+}
+
+async function testAIConfig(config:AIConfig):Promise<string>{
+  if(!config.apiKey.trim()) throw new Error("کلیلی API داخل نەکراوە");
+  if(config.provider==="gemini"){
+    const r=await fetch((config.baseUrl||AI_PROVIDERS.gemini.base)+"/models?key="+encodeURIComponent(config.apiKey));
+    if(!r.ok) throw new Error("Gemini API Key ڕەتکرایەوە");
+    return "Gemini API کار دەکات ✓";
+  }
+  if(config.provider==="anthropic"){
+    const r=await fetch((config.baseUrl||AI_PROVIDERS.anthropic.base)+"/models",{headers:{"x-api-key":config.apiKey,"anthropic-version":"2023-06-01"}});
+    if(!r.ok) throw new Error("Anthropic API Key ڕەتکرایەوە");
+    return "Anthropic API کار دەکات ✓";
+  }
+  const base=(config.baseUrl||AI_PROVIDERS[config.provider].base).replace(/\/$/,"");
+  const r=await fetch(base+"/models",{headers:{Authorization:"Bearer "+config.apiKey}});
+  if(!r.ok) throw new Error("API Key یان endpoint ڕەتکرایەوە");
+  return AI_PROVIDERS[config.provider].label+" API کار دەکات ✓";
+}
+
+async function askAI(config:AIConfig,prompt:string):Promise<string>{
+  if(!config.apiKey.trim()) throw new Error("سەرەتا API Key زیاد بکە");
+  if(config.provider==="gemini"){
+    const base=(config.baseUrl||AI_PROVIDERS.gemini.base).replace(/\/$/,"");
+    const r=await fetch(base+"/models/"+encodeURIComponent(config.model)+":generateContent?key="+encodeURIComponent(config.apiKey),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(data?.error?.message||"Gemini request failed");
+    return data?.candidates?.[0]?.content?.parts?.map((p:any)=>p.text||"").join("")||"وەڵامێک نەگەڕایەوە.";
+  }
+  if(config.provider==="anthropic"){
+    const base=(config.baseUrl||AI_PROVIDERS.anthropic.base).replace(/\/$/,"");
+    const r=await fetch(base+"/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":config.apiKey,"anthropic-version":"2023-06-01"},body:JSON.stringify({model:config.model,max_tokens:1800,messages:[{role:"user",content:prompt}]})});
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(data?.error?.message||"Anthropic request failed");
+    return data?.content?.map((p:any)=>p.text||"").join("")||"وەڵامێک نەگەڕایەوە.";
+  }
+  const base=(config.baseUrl||AI_PROVIDERS[config.provider].base).replace(/\/$/,"");
+  const r=await fetch(base+"/chat/completions",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+config.apiKey},body:JSON.stringify({model:config.model,messages:[{role:"system",content:"You are a helpful Kurdish Library assistant. Answer in natural Central Kurdish (Sorani) unless the user asks otherwise. Do not invent facts."},{role:"user",content:prompt}],temperature:.3})});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(data?.error?.message||"AI request failed");
+  return data?.choices?.[0]?.message?.content||"وەڵامێک نەگەڕایەوە.";
+}
+
 function PageControls({page,total,onChange}:{page:number;total:number;onChange:(page:number)=>void}){
   if(total<=1)return null;
   const from=Math.max(1,page-2), to=Math.min(total,from+4), start=Math.max(1,to-4);
@@ -62,6 +126,10 @@ function App(){
   const [textMatches,setTextMatches]=useState<Set<string>>(new Set());
   const [libraryPage,setLibraryPage]=useState(1);
   const [summaryPage,setSummaryPage]=useState(1);
+  const [aiConfig,setAiConfig]=useState<AIConfig>(()=>loadAIConfig());
+  const [aiKeyVisible,setAiKeyVisible]=useState(false);
+  const [aiBusy,setAiBusy]=useState(false);
+  const [aiResult,setAiResult]=useState("");
   
 
   async function persistNote(note: Note){
@@ -121,6 +189,7 @@ function App(){
     }catch{}
   },[]);
   useEffect(()=>{try{localStorage.setItem("kurdish-library-settings",JSON.stringify({theme,font,fontSize,compact,viewMode}));}catch{}},[theme,font,fontSize,compact,viewMode]);
+  useEffect(()=>{try{localStorage.setItem("kurdish-library-ai",JSON.stringify(aiConfig));}catch{}},[aiConfig]);
 
   const categories=useMemo(()=>["هەموو",...Array.from(new Set(books.map(b=>b.category).filter(Boolean)))],[books]);
   const favoriteBooks=useMemo(()=>books.filter(b=>states[b.id]?.favorite),[books,states]);
@@ -147,6 +216,22 @@ function App(){
   const totalSummaryPages=Math.max(1,Math.ceil(summaries.length/summaryPageSize));
   const safeSummaryPage=Math.min(summaryPage,totalSummaryPages);
   const pagedSummaries=summaries.slice((safeSummaryPage-1)*summaryPageSize,safeSummaryPage*summaryPageSize);
+
+  async function runAI(prompt:string){
+    setAiBusy(true); setAiResult("");
+    try{
+      const result=await askAI(aiConfig,prompt);
+      setAiResult(result);
+      setNotice("AI وەڵامی دا ✓");
+    }catch(e:any){setAiResult("هەڵە: "+(e?.message||"داواکاری AI سەرکەوتوو نەبوو"));setNotice("داواکاری AI سەرکەوتوو نەبوو");}
+    finally{setAiBusy(false);}
+  }
+  async function saveAndTestAI(){
+    try{
+      await testAIConfig(aiConfig);
+      setNotice("کلیلی API دروستە ✓");
+    }catch(e:any){setNotice(e?.message||"تاقیکردنەوە سەرکەوتوو نەبوو");}
+  }
 
   async function openBook(book:Book){
     setSelected(book);
@@ -278,7 +363,24 @@ function App(){
       <ReaderContent book={selected} url={fileUrl} fontSize={fontSize} onProgress={v=>saveProgress(selected.id,v)} onNotice={setNotice} ink={readerMode==="ink"} split={split} initialProgress={states[selected.id]?.progress||0} onPage={p=>setReaderPage(p)} jumpPage={readerJump}/>
       <div className="reader-tools"><button className={readerMode==="ink"?"active-tool":""} onClick={()=>setReaderMode(readerMode==="ink"?"normal":"ink")}>🖋️ Ink</button><span>Split:</span>{([1,2,4] as const).map(n=><button key={n} className={split===n?"active-tool":""} onClick={()=>setSplit(n)}>{n}×</button>)}</div><div className="reader-foot"><button onClick={()=>toggle("favorite")}>{states[selected.id]?.favorite?"❤️":"🤍"} دڵخواز</button><button onClick={()=>toggle("bookmark")}>{states[selected.id]?.bookmark?"🔖":"📑"} نیشانە</button>{states[selected.id]?.bookmark&&<button onClick={()=>{setReaderJump(states[selected.id]?.bookmarkPage||1);setNotice(`گەڕانەوە بۆ لاپەڕەی ${states[selected.id]?.bookmarkPage||1}`)}}>↩️ گەڕانەوە بۆ نیشانە</button>}<button onClick={note}>📝 تێبینی</button><button onClick={speak}>🔊 خوێندنەوە</button><button onClick={addHighlight}>🖍️ Highlight</button>{selected.format==="pdf"&&<button onClick={runOcr} disabled={ocrBusy}>🔎 {ocrBusy?"OCR…":"OCR"}</button>}<button onClick={()=>setFontSize(v=>Math.min(30,v+2))}>A+</button><button onClick={()=>setFontSize(v=>Math.max(14,v-2))}>A−</button></div>
       </div></div>}
-      {notebookOpen&&<div className="modal" onClick={()=>setNotebookOpen(false)}><div className="notebook notebook-pro" onClick={e=>e.stopPropagation()}><div className="reader-head"><div><strong>📓 دەفتەری تێبینی</strong><small>تێبینییەکان بە تەواوی لە ناوخۆی ئامێرەکەت هەڵدەگیرێن</small></div><button onClick={()=>setNotebookOpen(false)}>✕</button></div><div className="notebook-highlights">{selected&&highlights.filter(h=>h.bookId===selected.id).slice(0,12).map(h=><div key={h.id} className="highlight-item" role="button" tabIndex={0} onClick={()=>{if(h.page){const b=books.find(x=>x.id===h.bookId);if(b){setSelected(b);setDetailsOpen(false);setReaderJump(h.page);}setReaderPage(h.page);setNotice(`دەقی Highlight ـکراو لە لاپەڕەی ${h.page} ـە`)};setNoteTitle("Highlight");setNoteDraft(h.note ? '"' + h.text + '"\\n\\n' + h.note : '"' + h.text + '"');setNoteBookId(h.bookId);setActiveNoteId(null)}}><span>🖍️</span><strong>{h.text.slice(0,90)}</strong>{h.page&&<small>لاپەڕە {h.page}</small>}<button className="highlight-delete" onClick={e=>{e.stopPropagation();removeHighlight(h.id)}}>🗑️</button></div>)}</div><div className="notebook-toolbar"><input placeholder="گەڕان لە تێبینییەکان..." value={noteSearch} onChange={e=>setNoteSearch(e.target.value)}/><button onClick={()=>{const b=selected||books[0];if(!b)return;setNoteTitle("تێبینی نوێ");setNoteDraft("");setNoteBookId(b.id);setActiveNoteId(null)}}>＋ تێبینی نوێ</button></div><div className="notebook-grid"><aside className="notebook-list">{notes.filter(n=>{const b=books.find(x=>x.id===n.bookId);const q=noteSearch.toLocaleLowerCase();return (!q||`${n.title} ${n.body} ${b?.title||""}`.toLocaleLowerCase().includes(q))}).map(n=><article key={n.id} className={noteBookId===n.bookId&&noteTitle===n.title?"active":""}><button className="note-select" onClick={()=>{setNoteTitle(n.title);setNoteDraft(n.body);setNoteBookId(n.bookId);setActiveNoteId(n.id)}}><strong>{n.title||"بێ ناونیشان"}</strong><small>{books.find(b=>b.id===n.bookId)?.title||"کتێب"}</small><p>{n.body.slice(0,120)}</p></button><button className="danger" onClick={()=>removeNote(n.id)}>🗑️</button></article>)}{!notes.length&&<p>هێشتا هیچ تێبینییەک نییە.</p>}</aside><div className="notebook-editor"><input placeholder="ناونیشانی تێبینی" value={noteTitle} onChange={e=>setNoteTitle(e.target.value)}/><select value={noteBookId||selected?.id||""} onChange={e=>setNoteBookId(e.target.value)}>{books.map(b=><option key={b.id} value={b.id}>{b.title}</option>)}</select><textarea placeholder="تێبینییەک بنووسە..." value={noteDraft} onChange={e=>setNoteDraft(e.target.value)} rows={14}/><div className="notebook-actions"><button onClick={()=>{const now=Date.now();const id=activeNoteId||("note-"+now);const existing=notes.find(n=>n.id===id);persistNote({id,bookId:noteBookId||selected?.id||books[0]?.id||"",title:noteTitle||"تێبینی",body:noteDraft,createdAt:existing?.createdAt||now,updatedAt:now})}}>💾 پاشەکەوتکردن</button><button onClick={()=>{const b=books.find(x=>x.id===noteBookId);if(b){setSelected(b);setDetailsOpen(true);setNotebookOpen(false)}}}>📖 کردنەوەی کتێب</button></div></div></div></div></div>}{settingsOpen&&<div className="modal" onClick={()=>setSettingsOpen(false)}><div className="settings" onClick={e=>e.stopPropagation()}><div className="reader-head"><div><strong>⚙️ ڕێکخستنەکان</strong><small>ڕێکخستنی خوێندنەوە و شێوازی دەرکەوتن</small></div><button onClick={()=>setSettingsOpen(false)}>✕</button></div><div className="settings-grid"><label>شێوازی ڕووکار<select value={theme} onChange={e=>setTheme(e.target.value as "light"|"dark"|"sepia")}><option value="light">☀️ ڕووناک</option><option value="dark">🌙 تاریک</option><option value="sepia">📜 سێپیا</option><option value="eink">📄 E-ink</option></select></label><label>جۆری فۆنت<select value={font} onChange={e=>setFont(e.target.value)}><option value="system">سیستەم</option><option value="serif">Serif</option><option value="sans">Sans</option></select></label><label>قەبارەی نووسین: {fontSize}px<input type="range" min="14" max="30" value={fontSize} onChange={e=>setFontSize(Number(e.target.value))}/></label><label><span>لیستی کورتتر</span><input type="checkbox" checked={compact} onChange={e=>setCompact(e.target.checked)}/></label><div className="settings-section"><strong>📚 ئۆفلاین</strong><p>کتێبە هاوردەکراوەکان و پێشکەوتنی خوێندنەوە لە ناوخۆی ئامێرەکەت هەڵدەگیرێن.</p></div><div className="settings-section"><strong>🖋️ Ink Reader</strong><p>شێوازی grayscale بۆ خوێندنەوەی سادە و Split ـی 2× و 4× بۆ دابەشکردنی لاپەڕەی PDF بەکار دێت.</p></div></div></div></div>}
+      {notebookOpen&&<div className="modal" onClick={()=>setNotebookOpen(false)}><div className="notebook notebook-pro" onClick={e=>e.stopPropagation()}><div className="reader-head"><div><strong>📓 دەفتەری تێبینی</strong><small>تێبینییەکان بە تەواوی لە ناوخۆی ئامێرەکەت هەڵدەگیرێن</small></div><button onClick={()=>setNotebookOpen(false)}>✕</button></div><div className="notebook-highlights">{selected&&highlights.filter(h=>h.bookId===selected.id).slice(0,12).map(h=><div key={h.id} className="highlight-item" role="button" tabIndex={0} onClick={()=>{if(h.page){const b=books.find(x=>x.id===h.bookId);if(b){setSelected(b);setDetailsOpen(false);setReaderJump(h.page);}setReaderPage(h.page);setNotice(`دەقی Highlight ـکراو لە لاپەڕەی ${h.page} ـە`)};setNoteTitle("Highlight");setNoteDraft(h.note ? '"' + h.text + '"\\n\\n' + h.note : '"' + h.text + '"');setNoteBookId(h.bookId);setActiveNoteId(null)}}><span>🖍️</span><strong>{h.text.slice(0,90)}</strong>{h.page&&<small>لاپەڕە {h.page}</small>}<button className="highlight-delete" onClick={e=>{e.stopPropagation();removeHighlight(h.id)}}>🗑️</button></div>)}</div><div className="notebook-toolbar"><input placeholder="گەڕان لە تێبینییەکان..." value={noteSearch} onChange={e=>setNoteSearch(e.target.value)}/><button onClick={()=>{const b=selected||books[0];if(!b)return;setNoteTitle("تێبینی نوێ");setNoteDraft("");setNoteBookId(b.id);setActiveNoteId(null)}}>＋ تێبینی نوێ</button></div><div className="notebook-grid"><aside className="notebook-list">{notes.filter(n=>{const b=books.find(x=>x.id===n.bookId);const q=noteSearch.toLocaleLowerCase();return (!q||`${n.title} ${n.body} ${b?.title||""}`.toLocaleLowerCase().includes(q))}).map(n=><article key={n.id} className={noteBookId===n.bookId&&noteTitle===n.title?"active":""}><button className="note-select" onClick={()=>{setNoteTitle(n.title);setNoteDraft(n.body);setNoteBookId(n.bookId);setActiveNoteId(n.id)}}><strong>{n.title||"بێ ناونیشان"}</strong><small>{books.find(b=>b.id===n.bookId)?.title||"کتێب"}</small><p>{n.body.slice(0,120)}</p></button><button className="danger" onClick={()=>removeNote(n.id)}>🗑️</button></article>)}{!notes.length&&<p>هێشتا هیچ تێبینییەک نییە.</p>}</aside><div className="notebook-editor"><input placeholder="ناونیشانی تێبینی" value={noteTitle} onChange={e=>setNoteTitle(e.target.value)}/><select value={noteBookId||selected?.id||""} onChange={e=>setNoteBookId(e.target.value)}>{books.map(b=><option key={b.id} value={b.id}>{b.title}</option>)}</select><textarea placeholder="تێبینییەک بنووسە..." value={noteDraft} onChange={e=>setNoteDraft(e.target.value)} rows={14}/><div className="notebook-actions"><button onClick={()=>{const now=Date.now();const id=activeNoteId||("note-"+now);const existing=notes.find(n=>n.id===id);persistNote({id,bookId:noteBookId||selected?.id||books[0]?.id||"",title:noteTitle||"تێبینی",body:noteDraft,createdAt:existing?.createdAt||now,updatedAt:now})}}>💾 پاشەکەوتکردن</button><button onClick={()=>{const b=books.find(x=>x.id===noteBookId);if(b){setSelected(b);setDetailsOpen(true);setNotebookOpen(false)}}}>📖 کردنەوەی کتێب</button></div></div></div></div></div>}{settingsOpen&&<div className="modal" onClick={()=>setSettingsOpen(false)}><div className="settings" onClick={e=>e.stopPropagation()}><div className="reader-head"><div><strong>⚙️ ڕێکخستنەکان</strong><small>ڕێکخستنی خوێندنەوە و شێوازی دەرکەوتن</small></div><button onClick={()=>setSettingsOpen(false)}>✕</button></div><div className="settings-grid"><label>شێوازی ڕووکار<select value={theme} onChange={e=>setTheme(e.target.value as "light"|"dark"|"sepia")}><option value="light">☀️ ڕووناک</option><option value="dark">🌙 تاریک</option><option value="sepia">📜 سێپیا</option><option value="eink">📄 E-ink</option></select></label><label>جۆری فۆنت<select value={font} onChange={e=>setFont(e.target.value)}><option value="system">سیستەم</option><option value="serif">Serif</option><option value="sans">Sans</option></select></label><label>قەبارەی نووسین: {fontSize}px<input type="range" min="14" max="30" value={fontSize} onChange={e=>setFontSize(Number(e.target.value))}/></label><label><span>لیستی کورتتر</span><input type="checkbox" checked={compact} onChange={e=>setCompact(e.target.checked)}/></label><div className="settings-section"><strong>📚 ئۆفلاین</strong><p>کتێبە هاوردەکراوەکان و پێشکەوتنی خوێندنەوە لە ناوخۆی ئامێرەکەت هەڵدەگیرێن.</p></div><div className="settings-section"><strong>🖋️ Ink Reader</strong><p>شێوازی grayscale بۆ خوێندنەوەی سادە و Split ـی 2× و 4× بۆ دابەشکردنی لاپەڕەی PDF بەکار دێت.</p></div>
+<div className="settings-section ai-settings">
+  <strong>🤖 یاریدەدەری AI و API Key</strong>
+  <p>کلیلی خۆت تێبکە بۆ وەرگێڕان، پوختەکردنەوە و کارکردنی AI. کلیلی API لە GitHub یان کۆدی بەرنامەکەدا دانانرێت.</p>
+  <label>خزمەتگوزاری
+    <select value={aiConfig.provider} onChange={e=>{const provider=e.target.value as AIProvider;setAiConfig(x=>({...x,provider,model:AI_PROVIDERS[provider].defaultModel}))}}>
+      {Object.entries(AI_PROVIDERS).map(([id,p])=><option key={id} value={id}>{p.label}</option>)}
+    </select>
+  </label>
+  <label>API Key
+    <div className="api-key-row"><input type={aiKeyVisible?"text":"password"} autoComplete="off" value={aiConfig.apiKey} onChange={e=>setAiConfig(x=>({...x,apiKey:e.target.value}))} placeholder="API Key ـەکەت لێرە دابنێ"/><button type="button" onClick={()=>setAiKeyVisible(v=>!v)}>{aiKeyVisible?"شاردنەوە":"پیشاندان"}</button></div>
+  </label>
+  <label>Model<input value={aiConfig.model} onChange={e=>setAiConfig(x=>({...x,model:e.target.value}))} placeholder={AI_PROVIDERS[aiConfig.provider].defaultModel}/></label>
+  {aiConfig.provider==="custom"&&<label>API Base URL<input value={aiConfig.baseUrl} onChange={e=>setAiConfig(x=>({...x,baseUrl:e.target.value}))} placeholder="https://example.com/v1"/></label>}
+  <div className="ai-actions"><button onClick={saveAndTestAI} disabled={aiBusy}>🧪 تاقیکردنەوەی API</button>{selected&&<button onClick={()=>runAI("ئەم کتێبە بە پشتبەستن بە ئەم زانیارییە پوختەیەکی ڕوون و بەسوود بە سۆرانی بنووسە. ناوی کتێب: "+selected.title+"؛ نووسەر: "+selected.author+"؛ پوختەی هەنووکە: "+(selected.summaryKu||selected.summary||"نییە"))} disabled={aiBusy}>✨ پوختەی کتێب</button>}</div>
+  {aiBusy&&<div className="ai-status">AI خەریکی کارکردنە…</div>}
+  {aiResult&&<div className="ai-result" dir="rtl">{aiResult}</div>}
+</div></div></div></div>}
     </main>{notice&&<div className="toast">{notice}</div>}</div>
 }
 
