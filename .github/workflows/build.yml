@@ -28,6 +28,16 @@ jobs:
       - run: npx tsc --noEmit
       - run: rm -rf android && npx cap add android
       - run: npx cap sync android
+      - name: Align AndroidX browser dependency
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/build.gradle")
+          s = p.read_text()
+          block = """\nallprojects {\n  configurations.configureEach {\n    resolutionStrategy.force("androidx.browser:browser:1.9.0")\n  }\n}\n"""
+          if "androidx.browser:browser:1.9.0" not in s:
+              p.write_text(s.rstrip() + block)
+          PY
       - name: Build Android debug APK
         run: |
           chmod +x android/gradlew
