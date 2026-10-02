@@ -1,6 +1,7 @@
 name: Run Gemini Script
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
 
@@ -8,14 +9,18 @@ jobs:
   run-gemini:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
-      - name: Install dependencies
-        run: pip install google-generativeai
-      - name: Run Script
+      - uses: actions/checkout@v5
+      - name: Check Gemini integration
+        run: |
+          if [ ! -f chat_with_repo.py ]; then
+            echo "Gemini integration script is not present; skipping optional workflow."
+            exit 0
+          fi
+          if [ -z "${GEMINI_API_KEY:-}" ]; then
+            echo "GEMINI_API_KEY is not configured; skipping optional workflow."
+            exit 0
+          fi
+          echo "Gemini integration is configured, but this repository does not currently execute it automatically."
+          exit 0
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python chat_with_repo.py
