@@ -190,25 +190,40 @@ function App(){
   useEffect(()=>{
     const bb=(bundledBooks as Book[]); const bq=(bundledQuotes as Quote[]); const ba=(bundledAuthors as Author[]);
     setBooks(prev=>prev.length>3?prev:[...bb,...prev]); setQuotes(bq); setAuthors(ba);
-    getBooks().then(saved=>{ if(saved.length) setBooks(saved); });
-    getQuotes().then(saved=>{if(saved.length)setQuotes(saved);});
-    getAuthors().then(saved=>{if(saved.length)setAuthors(saved);});
-    getSummaries().then(saved=>{
-      if(saved.length){ setSummaries(saved); return; }
-      fetch("/data/summaries/manifest.json")
-        .then(r=>r.ok?r.json():null)
-        .then(async manifest=>{
-          if(!manifest?.packs?.length) return;
-          const loaded:Summary[]=[];
+    getBooks().then(saved=>{
+      const map=new Map<string,Book>((bundledBooks as Book[]).map(b=>[b.id,b]));
+      for(const book of saved) map.set(book.id,book);
+      const merged=[...map.values()];
+      setBooks(merged);
+    }).catch(()=>{});
+    getQuotes().then(saved=>{
+      const map=new Map<string,Quote>((bundledQuotes as Quote[]).map(q=>[q.id,q]));
+      for(const quote of saved) map.set(quote.id,quote);
+      setQuotes([...map.values()]);
+    }).catch(()=>{});
+    getAuthors().then(saved=>{
+      const map=new Map<string,Author>((bundledAuthors as Author[]).map(a=>[a.id,a]));
+      for(const author of saved) map.set(author.id,author);
+      setAuthors([...map.values()]);
+    }).catch(()=>{});
+    getSummaries().then(async saved=>{
+      const map=new Map<string,Summary>();
+      for(const item of saved) map.set(item.id,item);
+      try{
+        const manifest=await fetch("/data/summaries/manifest.json").then(r=>r.ok?r.json():null);
+        if(manifest?.packs?.length){
           for(let i=0;i<manifest.packs.length;i+=6){
             const batch=manifest.packs.slice(i,i+6);
             const parts=await Promise.all(batch.map((p:any)=>fetch("/data/summaries/"+p.file).then(r=>r.ok?r.json():[])));
-            for(const part of parts) if(Array.isArray(part)) loaded.push(...part);
-            if(loaded.length) setSummaries([...loaded]);
+            for(const part of parts) if(Array.isArray(part)) for(const item of part){if(!map.has(item.id))map.set(item.id,item);}
+            setSummaries([...map.values()]);
           }
-          if(loaded.length) await saveSummaries(loaded);
-        })
-        .catch(()=>{});
+        }else{
+          setSummaries([...map.values()]);
+        }
+      }catch{
+        setSummaries([...map.values()]);
+      }
     }).catch(()=>{});
   },[]);
   useEffect(()=>{
