@@ -22,7 +22,8 @@
     "external:cmu:rebuild": "node scripts/cmu-rebuild-summaries.mjs",
     "sources:translate": "node scripts/translate-open-book-sources.mjs",
     "public-data:openlibrary": "node scripts/import-openlibrary.mjs",
-    "public-data:pack": "node scripts/build-public-data-pack.mjs"
+    "public-data:pack": "node scripts/build-public-data-pack.mjs",
+    "public-data:apply": "node scripts/apply-public-data-pack.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",
