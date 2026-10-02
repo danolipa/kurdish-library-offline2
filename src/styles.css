@@ -96,3 +96,6 @@
 .ai-message.assistant{align-self:flex-end;border-inline-end:4px solid currentColor;background:rgba(127,127,127,.06)}
 .ai-message small{display:block;opacity:.65;margin-bottom:4px;font-weight:700}
 
+.source-attribution{font-size:.86rem;opacity:.75;margin-top:10px;line-height:1.7}
+.source-attribution a{text-decoration:underline}
+
