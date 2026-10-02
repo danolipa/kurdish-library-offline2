@@ -31,6 +31,9 @@ concurrency:
 jobs:
 
   populate-public-library:
+    concurrency:
+      group: external-book-data-publish
+      cancel-in-progress: false
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[populate-library]')) || (github.event_name == 'schedule' && github.event.schedule == '15 2 * * 6')
     env:
       HAS_GROQ: ${{ secrets.GROQ_API_KEY != '' }}
@@ -42,6 +45,10 @@ jobs:
         with:
           node-version: 22
       - name: Import Open Library metadata
+      - name: Sync latest main before generation
+        run: |
+          git fetch origin main
+          git reset --hard origin/main
         env:
           OPENLIBRARY_LIMIT: "900"
           OPENLIBRARY_QUERIES: "classic literature,philosophy,psychology,science,history,education,business,spirituality,productivity,leadership,technology,health"
@@ -59,8 +66,33 @@ jobs:
         run: npm run sources:translate
       - run: npm run sources:merge
       - run: npm run content:validate
-      - name: Commit public library expansion
-        run: |
+      - name: Publish public library expansion safely
+      run: |
+        set -e
+        git config user.name "kurdish-library-bot"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add content/public-sources src/data/library.json content/open-sources src/data/summaries.json
+        if git diff --cached --quiet; then exit 0; fi
+        git commit -m "Expand public library metadata and summaries"
+        git fetch origin main
+        if [ "$(git rev-parse HEAD~1)" != "$(git rev-parse origin/main)" ]; then
+          echo "Main changed during generation; refreshing and retrying from latest main."
+          git reset --hard origin/main
+          npm run public-data:openlibrary
+          npm run public-data:pack
+          npm run public-data:apply
+          npm run sources:import
+          if [ "$HAS_GROQ" = "true" ]; then
+            npm run sources:translate
+          fi
+          npm run sources:merge
+          npm run content:validate
+          git add content/public-sources src/data/library.json content/open-sources src/data/summaries.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Expand public library metadata and summaries"
+        fi
+        git push
+
           git config user.name "kurdish-library-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add content/public-sources src/data/library.json content/open-sources src/data/summaries.json
@@ -69,6 +101,9 @@ jobs:
           git pull --rebase origin main
           git push
   import-squality:
+    concurrency:
+      group: external-book-data-publish
+      cancel-in-progress: false
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[populate-squality]')) || (github.event_name == 'schedule' && github.event.schedule == '45 2 * * 3')
     env:
       HAS_GROQ: ${{ secrets.GROQ_API_KEY != '' }}
@@ -80,6 +115,10 @@ jobs:
         with:
           node-version: 22
       - run: npm run external:squality
+      - name: Sync latest main before generation
+        run: |
+          git fetch origin main
+          git reset --hard origin/main
       - run: npm run sources:squality:merge
       - name: Translate SQuALITY summaries
         if: env.HAS_GROQ == 'true'
@@ -91,8 +130,28 @@ jobs:
         run: |
           if [ -n "$GROQ_API_KEY" ]; then npm run sources:translate; else echo "GROQ_API_KEY is not configured; skipping translation."; fi
       - run: npm run sources:merge
-      - name: Publish SQuALITY changes on latest main
+      - name: Publish SQuALITY changes safely
         run: |
+          set -e
+          git config user.name "kurdish-library-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add content/external/squality-plot.json content/open-sources src/data/summaries.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Import and translate SQuALITY summaries"
+          git fetch origin main
+          if [ "$(git rev-parse HEAD~1)" != "$(git rev-parse origin/main)" ]; then
+            echo "Main changed during generation; refreshing and retrying from latest main."
+            git reset --hard origin/main
+            npm run external:squality
+            npm run sources:squality:merge
+            if [ "$HAS_GROQ" = "true" ]; then npm run sources:translate; fi
+            npm run sources:merge
+            git add content/external/squality-plot.json content/open-sources src/data/summaries.json
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "Import and translate SQuALITY summaries"
+          fi
+          git push
+
           set -e
           git config user.name "kurdish-library-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -109,6 +168,9 @@ jobs:
           git push
 
   import-cmu:
+    concurrency:
+      group: external-book-data-publish
+      cancel-in-progress: false
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[populate-cmu]')) || (github.event_name == 'schedule' && github.event.schedule == '15 2 * * 0')
     env:
       HAS_GROQ: ${{ secrets.GROQ_API_KEY != '' }}
@@ -120,6 +182,10 @@ jobs:
         with:
           node-version: 22
       - run: npm run external:cmu
+      - name: Sync latest main before generation
+        run: |
+          git fetch origin main
+          git reset --hard origin/main
         env:
           CMU_OFFSET: ${{ inputs.cmu_offset || '' }}
           CMU_LIMIT: ${{ inputs.cmu_limit || '1300' }}
@@ -134,8 +200,30 @@ jobs:
           OPEN_SOURCE_TRANSLATE_SOURCE: "CMU Book Summary Dataset"
         run: npm run sources:translate
       - run: npm run sources:merge
-      - name: Publish CMU changes on latest main
+      - name: Publish CMU changes safely
         run: |
+          set -e
+          git config user.name "kurdish-library-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add content/external/cmu content/open-sources src/data/library.json src/data/summaries.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Import and translate CMU book-summary batch"
+          git fetch origin main
+          if [ "$(git rev-parse HEAD~1)" != "$(git rev-parse origin/main)" ]; then
+            echo "Main changed during generation; refreshing and retrying from latest main."
+            git reset --hard origin/main
+            npm run external:cmu
+            npm run sources:cmu:queue-merge
+            npm run cmu:merge-library
+            if [ "$HAS_GROQ" = "true" ]; then npm run sources:translate; fi
+            npm run sources:merge
+            npm run content:validate
+            git add content/external/cmu content/open-sources src/data/library.json src/data/summaries.json
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "Import and translate CMU book-summary batch"
+          fi
+          git push
+
           set -e
           git config user.name "kurdish-library-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
