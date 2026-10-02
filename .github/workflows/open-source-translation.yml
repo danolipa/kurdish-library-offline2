@@ -1,0 +1,49 @@
+name: Translate Open-Source Summaries to Sorani
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Summaries to translate in this run"
+        required: false
+        default: "10"
+  schedule:
+    - cron: "0 */6 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: open-source-translation
+  cancel-in-progress: false
+
+jobs:
+  translate:
+    if: ${{ secrets.GROQ_API_KEY != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Translate queued summaries
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: ${{ vars.GROQ_MODEL }}
+          OPEN_SOURCE_TRANSLATE_LIMIT: ${{ inputs.limit || '10' }}
+        run: npm run sources:translate
+      - name: Merge translated summaries into app bundle
+        run: npm run sources:merge
+      - name: Commit Sorani summaries
+        run: |
+          git config user.name "kurdish-library-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add content/open-sources/translated-summaries.json src/data/summaries.json
+          if git diff --cached --quiet; then
+            echo "No new Sorani summaries."
+            exit 0
+          fi
+          git commit -m "Translate open-source book summaries to Sorani"
+          git pull --rebase origin main
+          git push
