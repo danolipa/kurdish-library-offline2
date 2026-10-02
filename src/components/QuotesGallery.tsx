@@ -1,0 +1,1 @@
+import React from"react";import type{Quote}from"../types";export default function QuotesGallery({quotes}:{quotes:Quote[]}){return <div className="quote-list" dir="rtl">{quotes.map(q=><blockquote key={q.id}><p>{q.textKu}</p><small>{q.author}</small></blockquote>)}</div>}
