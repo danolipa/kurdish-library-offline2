@@ -6,7 +6,7 @@ on:
       cmu_offset:
         description: "CMU dataset offset"
         required: false
-        default: "0"
+        default: ""
       cmu_limit:
         description: "Books to queue in this batch"
         required: false
@@ -28,7 +28,7 @@ jobs:
           node-version: 22
       - run: npm run external:cmu
         env:
-          CMU_OFFSET: ${{ inputs.cmu_offset || '0' }}
+          CMU_OFFSET: ${{ inputs.cmu_offset || '' }}
           CMU_LIMIT: ${{ inputs.cmu_limit || '1000' }}
       - name: Commit CMU queue
         run: |
