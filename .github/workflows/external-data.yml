@@ -1,5 +1,7 @@
 name: External Book Data Pipeline
 
+# Manual CMU continuation trigger is enabled via commit messages containing [populate-cmu].
+
 on:
   push:
     branches: [main]
