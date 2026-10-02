@@ -10,7 +10,13 @@ import bundledBooks from "./data/library.json";
 import bundledQuotes from "./data/quotes.json";
 import bundledAuthors from "./data/authors.json";
 import { getBookFile, getBookState, getBooks, getSummaries, getQuotes, getAuthors, saveBook, saveBookState, saveProgress, saveSummaries, saveQuotes, saveAuthors, getExtractedText, saveExtractedText, searchExtractedText, getHighlights, saveHighlight, deleteHighlight, getNotes, saveNote, deleteNote, getAIHistory, saveAIHistory, clearAIHistory } from "./storage";
-import "./styles.css";
+import "./styles.css";\nimport { registerServiceWorker } from "./serviceWorkerRegistration";
+import ErrorBoundary from "./components/ErrorBoundary";
+import { initGlobalErrorHandler } from "./lib/offlineCrashReporter";
+import { applyA11y, loadA11y } from "./lib/accessibility";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import { loadKurdishFonts } from "./lib/fontLoader";
+
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
@@ -841,5 +847,10 @@ class AppErrorBoundary extends React.Component<{children:React.ReactNode},{error
     return this.props.children;
   }
 }
+
+initGlobalErrorHandler();
+applyA11y(loadA11y());
+registerServiceWorker();
+void loadKurdishFonts();
 const root=document.getElementById("root");
-if(root) createRoot(root).render(<AppErrorBoundary><App/></AppErrorBoundary>);
+if(root) createRoot(root).render(<ErrorBoundary><ThemeProvider><AppErrorBoundary><App/></AppErrorBoundary></ThemeProvider></ErrorBoundary>);
