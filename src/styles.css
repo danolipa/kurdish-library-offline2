@@ -79,3 +79,12 @@
 
 .study-box{margin-top:12px;border:1px solid var(--border,#ddd);border-radius:12px;padding:12px;background:var(--card,#fff)}
 .study-box .ai-result{margin-top:10px}
+
+.content-studio{border:1px solid rgba(127,127,127,.2);border-radius:16px;padding:14px;margin-top:12px}
+.content-studio>p{line-height:1.7}
+.translation-progress{margin:10px 0}
+.translation-progress>div:first-child{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.translation-progress-bar{height:8px;border-radius:999px;background:rgba(127,127,127,.14);overflow:hidden}
+.translation-progress-bar i{display:block;height:100%;border-radius:999px;background:currentColor;transition:width .2s ease}
+.translated-badge{display:inline-flex;align-items:center;padding:8px 10px;border-radius:10px;background:rgba(127,127,127,.12);font-weight:700}
+
