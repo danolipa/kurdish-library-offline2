@@ -88,3 +88,11 @@
 .translation-progress-bar i{display:block;height:100%;border-radius:999px;background:currentColor;transition:width .2s ease}
 .translated-badge{display:inline-flex;align-items:center;padding:8px 10px;border-radius:10px;background:rgba(127,127,127,.12);font-weight:700}
 
+.ai-head-actions{display:flex;align-items:center;gap:6px}
+.ai-head-actions button{min-height:36px}
+.ai-thread{display:flex;flex-direction:column;gap:10px;margin:12px 0}
+.ai-message{max-width:92%;padding:10px 12px;border-radius:14px;line-height:1.8;white-space:pre-wrap}
+.ai-message.user{align-self:flex-start;border-inline-start:4px solid currentColor;background:rgba(127,127,127,.10)}
+.ai-message.assistant{align-self:flex-end;border-inline-end:4px solid currentColor;background:rgba(127,127,127,.06)}
+.ai-message small{display:block;opacity:.65;margin-bottom:4px;font-weight:700}
+
