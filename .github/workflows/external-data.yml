@@ -22,6 +22,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: external-book-data
+  cancel-in-progress: false
+
 jobs:
   import-cmu:
     runs-on: ubuntu-latest
