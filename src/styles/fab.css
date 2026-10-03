@@ -12,3 +12,4 @@
 .ai-fab-summary:disabled{opacity:.65;cursor:wait}
 @keyframes aiFabPulse{50%{transform:rotate(18deg) scale(1.12)}}
 @media(max-width:640px){.ai-fab-wrap{right:12px;bottom:74px}.ai-fab{width:56px;height:56px}.ai-fab-summary{padding:8px 11px;font-size:12px}}
+\n.ai-panel-tabs{display:flex;gap:6px;margin:10px 0;overflow:auto}.ai-panel-tabs button{border:1px solid var(--border,#ddd);background:var(--surface,#fff);color:var(--text,#222);border-radius:12px;padding:9px 12px;white-space:nowrap;font-weight:700}.ai-panel-tabs button.active{background:#171a2b;color:#fff}.ai-action-card{border:1px solid var(--border,#ddd);border-radius:16px;padding:14px;margin:10px 0;background:var(--surface,#fff)}.ai-action-card h3{margin:0 0 7px}.ai-action-card p{margin:0 0 12px;line-height:1.7}.ai-action-card button{border:0;border-radius:12px;padding:11px 14px;font-weight:800;cursor:pointer}\n
