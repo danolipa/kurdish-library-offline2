@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { SocialLogin } from "@capgo/capacitor-social-login";
 import type { Book, Quote, Summary, Author, Highlight, Note } from "./types";
 import { getBookFile, getBookState, getBooks, getSummaries, getQuotes, getAuthors, saveBook, saveBookState, saveProgress, saveSummaries, saveQuotes, saveAuthors, getExtractedText, saveExtractedText, searchExtractedText, getHighlights, saveHighlight, deleteHighlight, getNotes, saveNote, deleteNote, getAIHistory, saveAIHistory, clearAIHistory } from "./storage";
 import "./styles.css";
@@ -56,6 +55,10 @@ async function getPdfJs(): Promise<PdfJsModule> {
     pdfjsWorkerReady = true;
   }
   return pdfjsCache;
+}
+async function getSocialLogin() {
+  const module = await import("@capgo/capacitor-social-login");
+  return module.SocialLogin;
 }
 function assetUrl(path: string): string {
   return new URL(path.replace(/^\//, ""), document.baseURI).toString();
@@ -189,7 +192,7 @@ function App(){
   useEffect(()=>{
     const id=googleClientId.trim();
     if(!id) return;
-    SocialLogin.initialize({google:{webClientId:id,mode:"online"}}).catch(()=>{});
+    getSocialLogin().then(SocialLogin=>SocialLogin.initialize({google:{webClientId:id,mode:"online"}})).catch(()=>{});
   },[googleClientId]);
   function saveGoogleClientId(){
     const id=googleClientId.trim();
@@ -201,6 +204,7 @@ function App(){
   async function googleSignIn(){
     if(!googleClientId){setNotice("تکایە Google Web Client ID دابین بکە.");return;}
     try{
+      const SocialLogin=await getSocialLogin();
       const res:any=await SocialLogin.login({provider:"google",options:{scopes:["email","profile"],filterByAuthorizedAccounts:false}});
       const gp=res?.result?.profile||{};
       const profile:GoogleProfile={id:gp.id||"",email:gp.email||undefined,name:gp.name||undefined,picture:gp.imageUrl||undefined};
@@ -208,7 +212,7 @@ function App(){
       setNotice("بە Google چوویتە ژوورەوە ✓");
     }catch(e:any){setNotice("چوونەژوورەوەی Google سەرکەوتوو نەبوو: "+(e?.message||"هەڵە"))}
   }
-  async function googleSignOut(){try{await SocialLogin.logout({provider:"google"});}catch{} setGoogleProfile(null); localStorage.removeItem("kurdish-library-google-profile"); setNotice("لە Google دەرچوویت.");}
+  async function googleSignOut(){try{const SocialLogin=await getSocialLogin();await SocialLogin.logout({provider:"google"});}catch{} setGoogleProfile(null); localStorage.removeItem("kurdish-library-google-profile"); setNotice("لە Google دەرچوویت.");}
   async function persistNote(note: Note){
     await saveNote(note);
     setNotes(await getNotes());
