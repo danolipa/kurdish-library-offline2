@@ -139682,5 +139682,30 @@
       "freebaseId": "/m/0fwrr9",
       "publicationDate": ""
     }
+  },
+  {
+    "id": "ol-ol1885798w",
+    "title": "Abnormal psychology",
+    "author": "David H. Barlow, V. Mark Durand, David H. Barlow, David Barlow, Sherry H. Stewart",
+    "category": "Mental illness",
+    "language": "spa",
+    "format": "unknown",
+    "coverPath": "https://covers.openlibrary.org/b/id/15238779-L.jpg",
+    "tags": [
+      "Mental illness",
+      "Pathological Psychology",
+      "Psychopathology",
+      "Mental Disorders",
+      "Psychopathologie",
+      "Einfuhrung",
+      "Maladies mentales",
+      "Klinische Psychologie"
+    ],
+    "addedAt": 0,
+    "source": "bundle",
+    "sourceUrl": "https://openlibrary.org/works/OL1885798W",
+    "summaryKu": "",
+    "summary": "",
+    "rights": "Metadata derived from Open Library; attribution required under applicable Open Database licensing."
   }
 ]
