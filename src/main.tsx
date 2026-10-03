@@ -251,7 +251,7 @@ function App(){
       setAuthors([...authorMap.values()]);
     })();
     return()=>{cancelled=true};
-  },[]););
+  },[]);
   useEffect(()=>{
     const q=query.trim();
     let cancelled=false;
