@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: android-build
+  group: android-build-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
