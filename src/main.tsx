@@ -488,26 +488,57 @@ function App(){
   }
 
   async function openBook(book:Book){
+    // Enter the reader immediately. File loading and offline caching happen in the background.
     setSelected(book);
-    setDetailsOpen(true);
+    setDetailsOpen(false);
+    setReaderJump(undefined);
+    setReaderPage(1);
     setFileUrl(null);
-    const s=await getBookState(book.id);
-    setStates(x=>({...x,[book.id]:s}));
-    let blob=await getBookFile(book.id);
-    if(!blob && book.filePath && /^https?:\/\//.test(book.filePath)){
-      try{
-        setNotice("کتێبەکە یەکەم جار دادەبەزێت…");
-        const response=await fetch(book.filePath);
-        if(!response.ok) throw new Error("download failed");
-        blob=await response.blob();
-        await saveBook(book,blob);
-        setNotice("کتێبەکە بۆ ئۆفلاین پاشەکەوت کرا ✓");
-      }catch{setNotice("نەتوانرا فایلەکە لە سەرچاوەکە وەربگیرێت");}
+
+    // Load reading state in parallel; it must never block opening the reader.
+    void getBookState(book.id).then(s=>setStates(x=>({...x,[book.id]:s}))).catch(()=>{});
+
+    // If a remote URL exists, give the reader the URL immediately. Cache it afterwards.
+    if(book.filePath && /^https?:\/\//.test(book.filePath)){
+      setFileUrl(book.filePath);
+      void (async()=>{
+        try{
+          const response=await fetch(book.filePath);
+          if(!response.ok) throw new Error("download failed");
+          const blob=await response.blob();
+          await saveBook(book,blob);
+          if(book.format==="pdf") void extractPdfText(blob,book.id,setExtractedText,()=>{});
+          if(book.format==="txt"||book.format==="html"){
+            const raw=await blob.text();
+            const text=book.format==="html"?raw.replace(/<[^>]+>/g," "):raw;
+            (window as any).__kurdishLibraryText={...(window as any).__kurdishLibraryText,[book.id]:text};
+            await saveExtractedText(book.id,text);
+            setExtractedText(x=>({...x,[book.id]:text}));
+          }
+        }catch{
+          // The reader has already opened; only show an error if the remote document cannot load.
+          setNotice("فایلی کتێبەکە لە سەرچاوەکە بەردەست نییە");
+        }
+      })();
+      return;
     }
-    if(blob) {
-      setFileUrl(URL.createObjectURL(blob));
-      if(book.format==="pdf"){ extractPdfText(blob,book.id,setExtractedText,setNotice); }
-      if(book.format==="txt"||book.format==="html"){ const raw=await blob.text(); const text=book.format==="html"?raw.replace(/<[^>]+>/g," "):raw; (window as any).__kurdishLibraryText={...(window as any).__kurdishLibraryText,[book.id]:text}; await saveExtractedText(book.id,text); setExtractedText(x=>({...x,[book.id]:text})); }
+
+    // Local/imported files are opened from IndexedDB without waiting for any other operation.
+    try{
+      const blob=await getBookFile(book.id);
+      if(!blob){setNotice("فایلی کتێبەکە نەدۆزرایەوە");return;}
+      const objectUrl=URL.createObjectURL(blob);
+      setFileUrl(objectUrl);
+      if(book.format==="pdf") void extractPdfText(blob,book.id,setExtractedText,setNotice);
+      if(book.format==="txt"||book.format==="html"){
+        const raw=await blob.text();
+        const text=book.format==="html"?raw.replace(/<[^>]+>/g," "):raw;
+        (window as any).__kurdishLibraryText={...(window as any).__kurdishLibraryText,[book.id]:text};
+        await saveExtractedText(book.id,text);
+        setExtractedText(x=>({...x,[book.id]:text}));
+      }
+    }catch{
+      setNotice("نەتوانرا فایلەکە بکرێتەوە");
     }
   }
   function closeReader(){ if(fileUrl) URL.revokeObjectURL(fileUrl); setFileUrl(null); setSelected(null); }
@@ -712,8 +743,14 @@ function bookTextFor(book:Book){ return (window as any).__kurdishLibraryText?.[b
 
 function ReaderContent({book,url,fontSize,onProgress,onNotice,ink,split,initialProgress,onPage,jumpPage}:{book:Book;url:string|null;fontSize:number;onProgress:(v:number)=>void;onNotice:(s:string)=>void;ink:boolean;split:1|2|4;initialProgress?:number;onPage?:(page:number,total:number)=>void;jumpPage?:number}){
   const ref=useRef<HTMLDivElement>(null);
-  if(book.format==="pdf"&&url)return <PdfReader url={url} onProgress={onProgress} onNotice={onNotice} ink={ink} split={split} initialProgress={initialProgress||0} onPage={onPage} jumpPage={jumpPage}/>;
-  if(book.format==="epub"&&url)return <EpubReader url={url} onProgress={onProgress} onNotice={onNotice}/>;
+  if(book.format==="pdf"){
+    if(url)return <PdfReader url={url} onProgress={onProgress} onNotice={onNotice} ink={ink} split={split} initialProgress={initialProgress||0} onPage={onPage} jumpPage={jumpPage}/>;
+    return <div className="reader-loading"><div className="reader-spinner">⟳</div><strong>کتێبەکە خێرا دەکرێتەوە…</strong><small>یەکەم لاپەڕە ئامادە دەکرێت</small></div>;
+  }
+  if(book.format==="epub"){
+    if(url)return <EpubReader url={url} onProgress={onProgress} onNotice={onNotice}/>;
+    return <div className="reader-loading"><div className="reader-spinner">⟳</div><strong>EPUB دەکرێتەوە…</strong></div>;
+  }
   const text=bookTextFor(book)||book.summaryKu||book.summary||"ئەم کتێبە بۆ خوێندنەوەی ئۆفلاین ئامادەیە.";
   return <div className="text-reader" ref={ref} style={{fontSize}} onScroll={e=>{const el=e.currentTarget;onProgress(el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight));}}><h1>{book.title}</h1><p>{text}</p></div>
 }
