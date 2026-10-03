@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import * as pdfjsLib from "pdfjs-dist";
 import { TextLayer } from "pdfjs-dist";
-import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import ePub from "epubjs";
 import { SocialLogin } from "@capgo/capacitor-social-login";
 import type { Book, Quote, Summary, Author, Highlight, Note } from "./types";
@@ -30,7 +29,8 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { loadKurdishFonts } from "./lib/fontLoader";
 
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+// PDF.js runs without a Web Worker for maximum Capacitor/Android WebView compatibility.
+pdfjsLib.GlobalWorkerOptions.workerSrc = "";
 
 const seed: Book[] = [
   { id:"demo-1", title:"نموونەی کتێبی یەکەم", author:"کتێبخانەی کوردی", category:"ئەدەب", language:"کوردی", format:"txt", summary:"ئەمە کتێبێکی نموونەییە بۆ تاقیکردنەوەی خوێندنەوە.", addedAt:Date.now(), source:"bundle" },
@@ -547,7 +547,7 @@ function App(){
     try{
       const { createWorker }=await import("tesseract.js");
       const worker=await createWorker("kur");
-      const pdf=await pdfjsLib.getDocument({data:await blob.arrayBuffer()}).promise;
+      const pdf=await pdfjsLib.getDocument({data:await blob.arrayBuffer(),disableWorker:true,isEvalSupported:false}).promise;
       const pages:string[]=[];
       const limit=Math.min(pdf.numPages,30);
       for(let n=1;n<=limit;n++){
@@ -693,7 +693,7 @@ function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage,jum
     let doc:any=null;
     (async()=>{
       try{
-        doc=await pdfjsLib.getDocument(url).promise;
+        doc=await pdfjsLib.getDocument({url,disableWorker:true,isEvalSupported:false}).promise;
         if(cancelled){await doc.destroy();return;}
         setPdf(doc); setTotal(doc.numPages);
         setPage(Math.max(1,Math.min(doc.numPages,Math.floor(initialProgress*Math.max(0,doc.numPages-1))+1)));
