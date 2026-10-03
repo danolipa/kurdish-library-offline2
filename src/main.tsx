@@ -170,6 +170,7 @@ function App(){
   const [translationProgress,setTranslationProgress]=useState({done:0,total:0});
   const [quoteBusy,setQuoteBusy]=useState(false);
   const translationStopRef=useRef(false);
+  const readerRequestRef=useRef(0);
   const sourcePackCache=useRef(new Map<string,SourceSummaryRow[]>());
   const [googleProfile,setGoogleProfile]=useState<GoogleProfile|null>(null);
   const [googleClientId,setGoogleClientId]=useState(()=>localStorage.getItem("kurdish-library-google-client-id")||(import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID||"").trim());
@@ -517,11 +518,10 @@ function App(){
         id:"internet-summary-"+selected.id+"-"+Date.now(),
         bookId:selected.id,
         title:selected.title,
-        author:selected.author,
         textOriginal:sourceSummary,
         textKu:translated,
         source:"Google Books · internet summary",
-        sourceUrl:info.infoLink||("https://books.google.com/books?q="+q),
+        sourceUrl:info.infoLink || ("https://books.google.com/books?q="+q),
         wordCount:translated.split(/\s+/).filter(Boolean).length
       };
       await saveSummaries([itemSummary]);
@@ -554,10 +554,12 @@ function App(){
 
     // If a remote URL exists, give the reader the URL immediately. Cache it afterwards.
     if(book.filePath && /^https?:\/\//.test(book.filePath)){
-      setFileUrl(book.filePath);
+      setFileUrl(remoteUrl);
       void (async()=>{
         try{
-          const response=await fetch(book.filePath);
+          const remoteUrl=book.filePath;
+          if(!remoteUrl) throw new Error("missing remote URL");
+          const response=await fetch(remoteUrl);
           if(!response.ok) throw new Error("download failed");
           const blob=await response.blob();
           await saveBook(book,blob);
@@ -633,7 +635,7 @@ function App(){
     try{
       const { createWorker }=await import("tesseract.js");
       const worker=await createWorker("kur");
-      const pdf=await pdfjsLib.getDocument({data:await blob.arrayBuffer(),disableWorker:true,isEvalSupported:false}).promise;
+      const pdf=await pdfjsLib.getDocument({data:await blob.arrayBuffer(),isEvalSupported:false}).promise;
       const pages:string[]=[];
       const limit=Math.min(pdf.numPages,30);
       for(let n=1;n<=limit;n++){
@@ -922,7 +924,7 @@ function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage,jum
     let doc:any=null;
     (async()=>{
       try{
-        doc=await pdfjsLib.getDocument({url,disableWorker:true,isEvalSupported:false}).promise;
+        doc=await pdfjsLib.getDocument({url,isEvalSupported:false}).promise;
         if(cancelled){await doc.destroy();return;}
         setPdf(doc); setTotal(doc.numPages);
         setPage(Math.max(1,Math.min(doc.numPages,Math.floor(initialProgress*Math.max(0,doc.numPages-1))+1)));
