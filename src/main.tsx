@@ -129,7 +129,7 @@ function App(){
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [font,setFont]=useState("system");
   const [compact,setCompact]=useState(false);
-  const [tab,setTab]=useState<"home"|"library"|"summaries"|"quotes"|"favorites"|"media">("home");
+  const [tab,setTab]=useState<"home"|"library"|"summaries"|"quotes"|"favorites"|"media"|"internet">("home");
   const [viewMode,setViewMode]=useState<"grid"|"shelf"|"list"|"small">("grid");
   const [notebookOpen,setNotebookOpen]=useState(false);
   const [notes,setNotes]=useState<Note[]>([]);
@@ -162,6 +162,10 @@ function App(){
   const [studyBusy,setStudyBusy]=useState(false);
   const [sourceManifest,setSourceManifest]=useState<SourceSummaryManifest|null>(null);
   const [translationBusy,setTranslationBusy]=useState(false);
+  const [internetQuery,setInternetQuery]=useState("");
+  const [internetBooks,setInternetBooks]=useState<any[]>([]);
+  const [internetBusy,setInternetBusy]=useState(false);
+  const [internetImporting,setInternetImporting]=useState<number|null>(null);
   const [translationProgress,setTranslationProgress]=useState({done:0,total:0});
   const [quoteBusy,setQuoteBusy]=useState(false);
   const translationStopRef=useRef(false);
@@ -713,6 +717,7 @@ function App(){
         <button className={tab==="quotes"?"active":""} onClick={()=>setTab("quotes")}><span className="nav-icon">❝</span><span>وتەکان</span></button>
         <button className={tab==="favorites"?"active":""} onClick={()=>setTab("favorites")}><span className="nav-icon">♡</span><span>دڵخوازەکان</span></button>
         <button className={tab==="media"?"active":""} onClick={()=>setTab("media")}><span className="nav-icon">▶</span><span>میدیا</span></button>
+        <button className={tab==="internet"?"active":""} onClick={()=>setTab("internet")}><span className="nav-icon">🌐</span><span>ئینتەرنێت</span></button>
         <button onClick={()=>setNotebookOpen(true)}><span className="nav-icon">▤</span><span>تۆمار</span></button>
       </nav>
       <nav className="mobile-bottom-nav" aria-label="گەشتکردن">
@@ -720,6 +725,7 @@ function App(){
         <button className={tab==="library"?"active":""} onClick={()=>setTab("library")}><span className="nav-icon">▦</span><small>کتێبخانە</small></button>
         <button className={tab==="summaries"?"active":""} onClick={()=>setTab("summaries")}><span className="nav-icon">✦</span><small>پوختە</small></button>
         <button className={tab==="quotes"?"active":""} onClick={()=>setTab("quotes")}><span className="nav-icon">❝</span><small>وتە</small></button>
+        <button className={tab==="internet"?"active":""} onClick={()=>setTab("internet")}><span className="nav-icon">🌐</span><small>ئینتەرنێت</small></button>
         <button onClick={()=>setSettingsOpen(true)}><span className="nav-icon">☰</span><small>زیاتر</small></button>
       </nav>
 <section className="hero"><div><div className="eyebrow">KURDISH LIBRARY • OFFLINE</div><h2>هەموو کتێبەکانت لە یەک شوێن</h2><p>گەڕان، خوێندنەوە، پاشەکەوتکردن و خوێندنەوەی PDF/EPUB بە شێوەی ئۆفلاین.</p></div><div className="stats"><strong>{books.length}</strong><span>کتێب</span><strong>{summaries.length}</strong><span>پوختەی سۆرانی</span><strong>{sourceManifest?.total||0}</strong><span>سەرچاوە</span><strong>{filtered.length}</strong><span>ئەنجام</span></div><input className="search" placeholder="گەڕان بە ناوی کتێب، نووسەر یان ناوەڕۆک..." value={query} onChange={e=>setQuery(e.target.value)}/></section>
@@ -730,6 +736,26 @@ function App(){
       {tab==="summaries"&&<section className="content-panel"><h2>✨ پوختەی کتێبەکان</h2><p>پوختەکان لە ناوخۆی ئامێر هەڵدەگیرێن و بۆ گەڕان و خوێندنەوەی ئۆفلاین بەکاردێن.</p>{summaries.length?<><div className="content-list">{pagedSummaries.map(s=><article key={s.id}><h3>{s.title}</h3><p>{s.textKu}</p><small>{s.wordCount?`ژمارەی وشە: ${s.wordCount} · `:""}{s.source||"داتای ئۆفلاین"}</small></article>)}</div><PageControls page={safeSummaryPage} total={totalSummaryPages} onChange={setSummaryPage}/></>:<div className="empty-state"><strong>هێشتا پوختەی ئۆفلاین نییە.</strong><p>داتاپاکی JSON لە دوگمەی «داتاپاک» هاوردە بکە؛ دواتر پوختەکان لێرە و لە گەڕانی کتێبەکاندا دەردەکەون.</p></div>}</section>}
       {tab==="quotes"&&<section className="content-panel"><h2>💬 وتەکان</h2>{quotes.length?<div className="quote-list">{quotes.map(q=><article key={q.id}><blockquote>“{q.textKu}”</blockquote><strong>{q.author}</strong></article>)}</div>:<p>هێشتا وتەی ئۆفلاین زیاد نەکراوە. سیستەمی داتا ئامادەیە بۆ کۆمەڵەی زۆرتر.</p>}</section>}
       {tab==="media"&&<MediaPlayer/>}
+      {tab==="internet"&&<section className="internet-library">
+        <div className="internet-hero">
+          <div><span className="internet-icon">🌐</span><div><h2>کتێب لە ئینتەرنێت</h2><p>گەڕان لە Project Gutenberg و هێنانی کتێبە بەردەستەکان بۆ خوێندنەوەی ئۆفلاین.</p></div></div>
+          <div className="internet-search"><input value={internetQuery} onChange={e=>setInternetQuery(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void searchGutenberg()}} placeholder="ناوی کتێب یان نووسەر..." /><button onClick={()=>void searchGutenberg()} disabled={internetBusy}>{internetBusy?"گەڕان…":"🔎 گەڕان"}</button></div>
+          <small>سەرچاوە: Gutendex / Project Gutenberg · مافەکان بەپێی شوێنی بەکارهێنەر پشکنین بکە.</small>
+        </div>
+        <div className="internet-results">
+          {!internetBooks.length&&!internetBusy&&<div className="internet-empty">📚<strong>کتێبێک بگەڕێ</strong><span>بۆ نموونە: Pride and Prejudice، Sherlock Holmes، Shakespeare</span></div>}
+          {internetBooks.map((item:any)=>{
+            const chosen=gutenbergFormat(item), imported=books.some(b=>b.id==="gutenberg-"+item.id);
+            return <article className="internet-book" key={item.id}>
+              <div className="internet-cover">{item.formats?.["image/jpeg"]?<img src={item.formats["image/jpeg"]} alt="" loading="lazy"/>:"📖"}</div>
+              <div className="internet-book-body"><h3>{item.title}</h3><p>{item.authors?.map((a:any)=>a.name).join("، ")||"نووسەر نەناسراو"}</p>
+                <div className="internet-meta"><span>{item.languages?.join("، ")||"en"}</span><span>{item.download_count||0} خوێندنەوە</span>{item.copyright===false?<span>Public Domain (US)</span>:<span>ماف پشکنین بکە</span>}</div>
+                <div className="internet-actions"><button onClick={()=>window.open("https://www.gutenberg.org/ebooks/"+item.id,"_blank","noopener,noreferrer")}>🌐 سەیری سەرچاوە</button><button disabled={!chosen.url||item.copyright===true||internetImporting===item.id||imported} onClick={()=>void importGutenbergBook(item)}>{internetImporting===item.id?"هێنان…":imported?"✓ لە کتێبخانەیە":"⬇️ هێنان بۆ کتێبخانە"}</button></div>
+              </div>
+            </article>;
+          })}
+        </div>
+      </section>}
       {tab!=="media"&&<section className="notebook-launch"><button onClick={()=>setNotebookOpen(true)}>🗒️ تۆمار و تێبینییەکان</button><span>{Object.values(states).filter(s=>s.note).length} تێبینی</span></section>}{tab!=="summaries"&&tab!=="quotes"&&tab!=="media"&&<section className={`grid view-${viewMode}`}>{pagedBooks.map(b=><article className="card" key={b.id} onClick={()=>openBook(b)}><div className="cover">{b.coverPath?<img src={b.coverPath} alt="" loading="lazy"/>:b.format==="pdf"?"📕":b.format==="epub"?"📘":"📖"}</div><div className="card-body"><small>{b.category} · {b.format.toUpperCase()}</small><h3>{b.title}</h3><p>{b.author}</p><span>{b.summaryKu||b.summary||"کلیک بکە بۆ خوێندنەوە."}</span>{states[b.id]?.progress>0&&<div className="book-progress"><i style={{width:`${Math.round((states[b.id]?.progress||0)*100)}%`}}/></div>}</div></article>)}</section>}{tab!=="summaries"&&tab!=="quotes"&&tab!=="media"&&<PageControls page={safeLibraryPage} total={totalLibraryPages} onChange={setLibraryPage}/>}
 
       {selected&&detailsOpen&&<div className="modal" onClick={()=>setDetailsOpen(false)}><div className="book-details" onClick={e=>e.stopPropagation()}><div className="reader-head"><div><strong>{selected.title}</strong><small>{selected.author}</small></div><button onClick={()=>setDetailsOpen(false)}>✕</button></div><div className="book-details-grid"><div className="detail-cover">{selected.coverPath?<img src={selected.coverPath} alt="" />:<div>{selected.format==="pdf"?"📕":selected.format==="epub"?"📘":"📖"}</div>}</div><div><h2>{selected.title}</h2><p className="author-line">✍️ {selected.author}</p><p>📂 {selected.category} · {selected.language}</p><p>📄 {selected.format.toUpperCase()}</p>{selected.sizeBytes&&<p>💾 {(selected.sizeBytes/1024/1024).toFixed(1)} MB</p>}<div className="progress-line"><span style={{width:`${Math.round((states[selected.id]?.progress||0)*100)}%`}} /></div><small>{Math.round((states[selected.id]?.progress||0)*100)}% خوێندراوەتەوە</small></div></div>{(selected.summaryKu||selected.summary)&&<section className="detail-summary"><h3>✨ پوختە</h3><p>{selected.summaryKu||selected.summary}</p></section>}{summaries.filter(s=>s.bookId===selected.id).slice(0,1).map(s=><section className="detail-summary" key={s.id}><h3>✨ پوختەی ئۆفلاین</h3><p>{s.textKu}</p></section>)}<div className="detail-quotes">{quotes.filter(q=>q.author===selected.author||q.authorId===selected.author).slice(0,3).map(q=><blockquote key={q.id}>“{q.textKu}”<small>— {q.author}</small></blockquote>)}</div><div className="detail-actions"><button onClick={()=>{setDetailsOpen(false)}}>📖 خوێندنەوە</button><button onClick={fetchInternetSummary} disabled={translationBusy}>🌐 {translationBusy?"پوختە دەهێنرێت…":"هێنانی پوختەی ئینتەرنێت"}</button><button onClick={()=>toggle("favorite")}>{states[selected.id]?.favorite?"❤️ دڵخوازە":"🤍 زیادکردن بۆ دڵخواز"}</button><button onClick={()=>toggle("bookmark")}>🔖 نیشانە</button>{sourceIdSet.has(selected.id)&&!summaryIdSet.has(selected.id)&&<button onClick={translateSelectedSummary} disabled={translationBusy}>🌐 وەرگێڕینی پوختە</button>}{sourceIdSet.has(selected.id)&&summaryIdSet.has(selected.id)&&<span className="translated-badge">✅ پوختەی سۆرانی</span>}</div></div></div>}
