@@ -163,6 +163,7 @@ function App(){
   const [sourceManifest,setSourceManifest]=useState<SourceSummaryManifest|null>(null);
   const [translationBusy,setTranslationBusy]=useState(false);
   const [internetQuery,setInternetQuery]=useState("");
+  const [internetSource,setInternetSource]=useState<"all"|"gutenberg"|"openlibrary"|"archive">("all");
   const [internetBooks,setInternetBooks]=useState<any[]>([]);
   const [internetBusy,setInternetBusy]=useState(false);
   const [internetImporting,setInternetImporting]=useState<number|null>(null);
@@ -658,12 +659,21 @@ function App(){
     if(!q){setNotice("ناوی کتێب یان نووسەر بنووسە.");return;}
     setInternetBusy(true);
     try{
-      const r=await fetch("https://gutendex.com/books?search="+encodeURIComponent(q));
-      if(!r.ok) throw new Error("گەڕان سەرکەوتوو نەبوو");
-      const data=await r.json();
-      setInternetBooks(Array.isArray(data?.results)?data.results:[]);
-      setNotice((data?.results?.length||0)+" کتێب دۆزرایەوە ✓");
-    }catch(e:any){setInternetBooks([]);setNotice(e?.message||"نەتوانرا لە Gutenberg بگەڕێین.");}
+      const tasks:Promise<any[]>[]=[];
+      if(internetSource==="all"||internetSource==="gutenberg"){
+        tasks.push(fetch("https://gutendex.com/books?search="+encodeURIComponent(q)).then(async r=>{if(!r.ok)throw new Error("Gutenberg");const d=await r.json();return (Array.isArray(d?.results)?d.results:[]).map((x:any)=>({...x,_source:"gutenberg"}));}));
+      }
+      if(internetSource==="all"||internetSource==="openlibrary"){
+        tasks.push(fetch("https://openlibrary.org/search.json?q="+encodeURIComponent(q)+"&limit=12").then(async r=>{if(!r.ok)throw new Error("Open Library");const d=await r.json();return (Array.isArray(d?.docs)?d.docs:[]).map((x:any)=>({...x,_source:"openlibrary"}));}));
+      }
+      if(internetSource==="all"||internetSource==="archive"){
+        tasks.push(fetch("https://archive.org/advancedsearch.php?q="+encodeURIComponent(q)+"&fl[]=identifier,title,creator,description,mediatype,publicdate&rows=12&page=1&output=json").then(async r=>{if(!r.ok)throw new Error("Internet Archive");const d=await r.json();return (Array.isArray(d?.response?.docs)?d.response.docs:[]).map((x:any)=>({...x,_source:"archive"}));}));
+      }
+      const parts=await Promise.allSettled(tasks);
+      const merged=parts.flatMap((p:any)=>p.status==="fulfilled"?p.value:[]);
+      setInternetBooks(merged);
+      setNotice(merged.length+" ئەنجام لە سەرچاوەکانی ئینتەرنێت دۆزرایەوە ✓");
+    }catch(e:any){setInternetBooks([]);setNotice(e?.message||"گەڕانی ئینتەرنێت سەرکەوتوو نەبوو.");}
     finally{setInternetBusy(false);}
   }
 
@@ -790,20 +800,36 @@ function App(){
       {tab==="media"&&<MediaPlayer/>}
       {tab==="internet"&&<section className="internet-library">
         <div className="internet-hero">
-          <div><span className="internet-icon">🌐</span><div><h2>کتێب لە ئینتەرنێت</h2><p>گەڕان لە Project Gutenberg و هێنانی کتێبە بەردەستەکان بۆ خوێندنەوەی ئۆفلاین.</p></div></div>
+          <div><span className="internet-icon">🌐</span><div><h2>کتێب لە ئینتەرنێت</h2><p>لە چەند سەرچاوەی یاسایی و ناسراو بگەڕێ؛ کتێبە گونجاوەکانی Project Gutenberg دەتوانرێن بۆ خوێندنەوەی ئۆفلاین بهێنرێن.</p></div></div>
+          <div className="internet-source-tabs">
+            {([["all","هەموو"],["gutenberg","Gutenberg"],["openlibrary","Open Library"],["archive","Internet Archive"]] as const).map(([key,label])=><button key={key} className={internetSource===key?"active":""} onClick={()=>setInternetSource(key)}>{label}</button>)}
+          </div>
           <div className="internet-search"><input value={internetQuery} onChange={e=>setInternetQuery(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void searchGutenberg()}} placeholder="ناوی کتێب یان نووسەر..." /><button onClick={()=>void searchGutenberg()} disabled={internetBusy}>{internetBusy?"گەڕان…":"🔎 گەڕان"}</button></div>
-          <small>سەرچاوە: Gutendex / Project Gutenberg · مافەکان بەپێی شوێنی بەکارهێنەر پشکنین بکە.</small>
+          <small>Gutenberg: دۆخی public-domain لە کاتالۆگی ئەم سەرچاوەیەدا پشکنراوە. Open Library و Internet Archive زانیاری/سەرچاوە پیشان دەدەن؛ مافی بەکارهێنان بە پێی یاسای ناوچەکەت پشکنین بکە.</small>
         </div>
         <div className="internet-results">
           {!internetBooks.length&&!internetBusy&&<div className="internet-empty">📚<strong>کتێبێک بگەڕێ</strong><span>بۆ نموونە: Pride and Prejudice، Sherlock Holmes، Shakespeare</span></div>}
           {internetBooks.map((item:any)=>{
-            const chosen=gutenbergFormat(item), imported=books.some(b=>b.id==="gutenberg-"+item.id);
-            return <article className="internet-book" key={item.id}>
-              <div className="internet-cover">{item.formats?.["image/jpeg"]?<img src={item.formats["image/jpeg"]} alt="" loading="lazy"/>:"📖"}</div>
-              <div className="internet-book-body"><h3>{item.title}</h3><p>{item.authors?.map((a:any)=>a.name).join("، ")||"نووسەر نەناسراو"}</p>
-                <div className="internet-meta"><span>{item.languages?.join("، ")||"en"}</span><span>{item.download_count||0} خوێندنەوە</span>{item.copyright===false?<span>Public Domain (US)</span>:<span>ماف پشکنین بکە</span>}</div>
-                <div className="internet-actions"><button onClick={()=>window.open("https://www.gutenberg.org/ebooks/"+item.id,"_blank","noopener,noreferrer")}>🌐 سەیری سەرچاوە</button><button disabled={!chosen.url||item.copyright===true||internetImporting===item.id||imported} onClick={()=>void importGutenbergBook(item)}>{internetImporting===item.id?"هێنان…":imported?"✓ لە کتێبخانەیە":"⬇️ هێنان بۆ کتێبخانە"}</button></div>
-              </div>
+            const source=item._source;
+            if(source==="gutenberg"){
+              const chosen=gutenbergFormat(item), imported=books.some(b=>b.id==="gutenberg-"+item.id);
+              return <article className="internet-book" key={"g-"+item.id}>
+                <div className="internet-cover">{item.formats?.["image/jpeg"]?<img src={item.formats["image/jpeg"]} alt="" loading="lazy"/>:"📖"}</div>
+                <div className="internet-book-body"><h3>{item.title}</h3><p>{item.authors?.map((a:any)=>a.name).join("، ")||"نووسەر نەناسراو"}</p>
+                  <div className="internet-meta"><span>Gutenberg</span><span>{item.languages?.join("، ")||"en"}</span>{item.copyright===false?<span>Public Domain (US)</span>:<span>ماف پشکنین بکە</span>}</div>
+                  <div className="internet-actions"><button onClick={()=>window.open("https://www.gutenberg.org/ebooks/"+item.id,"_blank","noopener,noreferrer")}>🌐 سەیری سەرچاوە</button><button disabled={!chosen.url||item.copyright===true||internetImporting===item.id||imported} onClick={()=>void importGutenbergBook(item)}>{internetImporting===item.id?"هێنان…":imported?"✓ لە کتێبخانەیە":"⬇️ هێنان بۆ کتێبخانە"}</button></div>
+                </div>
+              </article>;
+            }
+            if(source==="openlibrary"){
+              const title=String(item.title||"کتێبی Open Library"), author=String(item.author_name?.slice?.(0,3)?.join("، ")||"نووسەر نەناسراو"), key=String(item.key||"").replace(/^\//,"");
+              return <article className="internet-book" key={"ol-"+(item.key||item.title)}>
+                <div className="internet-cover">📚</div><div className="internet-book-body"><h3>{title}</h3><p>{author}</p><div className="internet-meta"><span>Open Library</span><span>{item.first_publish_year||"ساڵ نەزانراو"}</span>{item.public_scan_b||item.ia?.length?<span>سکان/ئەرشیف هەیە</span>:<span>زانیاری کتێب</span>}</div><div className="internet-actions"><button onClick={()=>window.open("https://openlibrary.org/"+key,"_blank","noopener,noreferrer")}>🌐 سەیری سەرچاوە</button></div></div>
+              </article>;
+            }
+            const id=String(item.identifier||"");
+            return <article className="internet-book" key={"ia-"+id}>
+              <div className="internet-cover">🗄️</div><div className="internet-book-body"><h3>{String(item.title||id)}</h3><p>{Array.isArray(item.creator)?item.creator.join("، "):String(item.creator||"نووسەر نەناسراو")}</p><div className="internet-meta"><span>Internet Archive</span><span>{item.publicdate||"ساڵ نەزانراو"}</span><span>{item.mediatype||"item"}</span></div><div className="internet-actions"><button onClick={()=>window.open("https://archive.org/details/"+encodeURIComponent(id),"_blank","noopener,noreferrer")}>🌐 سەیری سەرچاوە</button></div></div>
             </article>;
           })}
         </div>
