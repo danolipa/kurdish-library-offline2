@@ -862,21 +862,3 @@ header h1{font-size:18px}.brand{width:42px;height:42px;font-size:24px}.top-actio
  .hero{padding:30px 24px 18px}.chips,.home-tools{padding-left:24px;padding-right:24px}.grid{grid-template-columns:repeat(3,minmax(0,1fr));padding-left:24px;padding-right:24px;gap:16px}.cover{height:190px}
 }
 @media(min-width:1000px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}.cover{height:205px}}
-
-
-/* Mobile performance pass */
-.card,.content-list article,.quote-list article,.resume-panel{content-visibility:auto;contain-intrinsic-size:260px 220px}
-@media(max-width:700px){
-  .app header,.main-nav{backdrop-filter:none;-webkit-backdrop-filter:none}
-  .app header{background:var(--kl-bg);box-shadow:0 1px 10px rgba(15,23,42,.06)}
-  .main-nav{background:var(--kl-card)}
-  .hero{box-shadow:0 6px 18px rgba(15,23,42,.05)}
-  .grid{contain:layout paint}
-  .card{contain:layout style paint}
-  .cover img{content-visibility:auto}
-  .home-tools,.chips{scroll-snap-type:x proximity}
-  .home-tools button,.chips button{scroll-snap-align:start}
-}
-@media(prefers-reduced-motion:reduce){
-  .card{transition:none!important}
-}
