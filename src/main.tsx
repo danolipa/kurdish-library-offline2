@@ -650,7 +650,7 @@ function App(){
     try{
       const { createWorker }=await import("tesseract.js");
       const worker=await createWorker("kur");
-      const pdf=await pdfjsLib.getDocument({data:await blob.arrayBuffer(),isEvalSupported:false}).promise;
+      const pdf=await pdfjsLib.getDocument({data:await blob.arrayBuffer()}).promise;
       const pages:string[]=[];
       const limit=Math.min(pdf.numPages,30);
       for(let n=1;n<=limit;n++){
@@ -764,7 +764,7 @@ function App(){
 
   const globalQ=query.trim().toLocaleLowerCase();
   const globalBooks=globalQ.length<2?[]:books.filter(b=>[b.title,b.author,b.category,b.summary,b.summaryKu,b.tags?.join(" ")].filter(Boolean).join(" ").toLocaleLowerCase().includes(globalQ)).slice(0,12);
-  const globalSummaries=globalQ.length<2?[]:summaries.filter(s=>[s.title,s.author,s.textKu,s.textOriginal].filter(Boolean).join(" ").toLocaleLowerCase().includes(globalQ)).slice(0,8);
+  const globalSummaries=globalQ.length<2?[]:summaries.filter(s=>[s.title,books.find(b=>b.id===s.bookId)?.author,s.textKu,s.textOriginal].filter(Boolean).join(" ").toLocaleLowerCase().includes(globalQ)).slice(0,8);
   const globalQuotes=globalQ.length<2?[]:quotes.filter(q=>[q.textKu,q.textOriginal,q.author].filter(Boolean).join(" ").toLocaleLowerCase().includes(globalQ)).slice(0,8);
   function externalSearch(site:string){
     const q=encodeURIComponent(query.trim()); if(!q)return;
@@ -948,7 +948,7 @@ function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage,jum
     let doc:any=null;
     (async()=>{
       try{
-        doc=await pdfjsLib.getDocument({url,isEvalSupported:false}).promise;
+        doc=await pdfjsLib.getDocument({url}).promise;
         if(cancelled){await doc.destroy();return;}
         setPdf(doc); setTotal(doc.numPages);
         setPage(Math.max(1,Math.min(doc.numPages,Math.floor(initialProgress*Math.max(0,doc.numPages-1))+1)));
