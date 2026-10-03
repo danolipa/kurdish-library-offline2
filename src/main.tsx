@@ -173,6 +173,7 @@ function App(){
 
   const translationStopRef=useRef(false);
   const readerRequestRef=useRef(0);
+  const readerObjectUrlRef=useRef<string|null>(null);
   const sourcePackCache=useRef(new Map<string,SourceSummaryRow[]>());
   const [googleProfile,setGoogleProfile]=useState<GoogleProfile|null>(null);
   const [googleClientId,setGoogleClientId]=useState(()=>localStorage.getItem("kurdish-library-google-client-id")||(import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID||"").trim());
@@ -557,6 +558,12 @@ function App(){
   }
 
   async function openBook(book:Book){
+    // Invalidate any previous async reader task so a slow file cannot overwrite a newer book.
+    const request=++readerRequestRef.current;
+    if(readerObjectUrlRef.current){
+      URL.revokeObjectURL(readerObjectUrlRef.current);
+      readerObjectUrlRef.current=null;
+    }
     // Enter the reader immediately. File loading and offline caching happen in the background.
     setSelected(book);
     setDetailsOpen(false);
@@ -577,7 +584,9 @@ function App(){
           const response=await fetch(remoteUrl);
           if(!response.ok) throw new Error("download failed");
           const blob=await response.blob();
+          if(request!==readerRequestRef.current)return;
           await saveBook(book,blob);
+          if(request!==readerRequestRef.current)return;
           if(book.format==="pdf") void extractPdfText(blob,book.id,setExtractedText,()=>{});
           if(book.format==="txt"||book.format==="html"){
             const raw=await blob.text();
@@ -588,7 +597,7 @@ function App(){
           }
         }catch{
           // The reader has already opened; only show an error if the remote document cannot load.
-          setNotice("فایلی کتێبەکە لە سەرچاوەکە بەردەست نییە");
+          if(request===readerRequestRef.current)setNotice("فایلی کتێبەکە لە سەرچاوەکە بەردەست نییە");
         }
       })();
       return;
@@ -597,8 +606,10 @@ function App(){
     // Local/imported files are opened from IndexedDB without waiting for any other operation.
     try{
       const blob=await getBookFile(book.id);
+      if(request!==readerRequestRef.current)return;
       if(!blob){setNotice("فایلی کتێبەکە نەدۆزرایەوە");return;}
       const objectUrl=URL.createObjectURL(blob);
+      readerObjectUrlRef.current=objectUrl;
       setFileUrl(objectUrl);
       if(book.format==="pdf") void extractPdfText(blob,book.id,setExtractedText,setNotice);
       if(book.format==="txt"||book.format==="html"){
@@ -606,13 +617,22 @@ function App(){
         const text=book.format==="html"?raw.replace(/<[^>]+>/g," "):raw;
         (window as any).__kurdishLibraryText={...(window as any).__kurdishLibraryText,[book.id]:text};
         await saveExtractedText(book.id,text);
+        if(request!==readerRequestRef.current)return;
         setExtractedText(x=>({...x,[book.id]:text}));
       }
     }catch{
-      setNotice("نەتوانرا فایلەکە بکرێتەوە");
+      if(request===readerRequestRef.current)setNotice("نەتوانرا فایلەکە بکرێتەوە");
     }
   }
-  function closeReader(){ if(fileUrl) URL.revokeObjectURL(fileUrl); setFileUrl(null); setSelected(null); }
+  function closeReader(){
+    ++readerRequestRef.current;
+    if(readerObjectUrlRef.current){
+      URL.revokeObjectURL(readerObjectUrlRef.current);
+      readerObjectUrlRef.current=null;
+    }
+    setFileUrl(null);
+    setSelected(null);
+  }
   async function toggle(key:"favorite"|"bookmark"){
     if(!selected)return;
     const current=states[selected.id] ?? await getBookState(selected.id);
