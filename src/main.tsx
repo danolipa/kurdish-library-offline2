@@ -554,10 +554,10 @@ function App(){
 
     // If a remote URL exists, give the reader the URL immediately. Cache it afterwards.
     if(book.filePath && /^https?:\/\//.test(book.filePath)){
+      const remoteUrl=book.filePath;
       setFileUrl(remoteUrl);
       void (async()=>{
         try{
-          const remoteUrl=book.filePath;
           if(!remoteUrl) throw new Error("missing remote URL");
           const response=await fetch(remoteUrl);
           if(!response.ok) throw new Error("download failed");
