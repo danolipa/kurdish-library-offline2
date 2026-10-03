@@ -337,11 +337,18 @@ function App(){
     }catch(e:any){setAiResult("هەڵە: "+(e?.message||"Study Mode سەرکەوتوو نەبوو"));} finally{setStudyBusy(false);}
   }
   async function askBookAI(prompt:string){
-    if(!selected){setNotice("سەرەتا کتێبێک هەڵبژێرە");return;}
+    if(!selected){setNotice("سەرەتا کتێبێک هەڵبژێرە بۆ ئەوەی AI بتوانێت لەسەری کار بکات.");setAiOpen(true);return;}
     const sourceText=(extractedText[selected.id]||bookTextFor(selected)||selected.summaryKu||selected.summary||"").slice(0,18000);
-    const context=`کتێب: ${selected.title}\nنووسەر: ${selected.author}\nپۆل: ${selected.category}\n\nدەقی بەردەست لە کتێب/پوختە:\n${sourceText}`;
-    await runAI(`تۆ یاریدەدەری کتێبخانەی کوردییت. وەڵام بە سۆرانیی سروشتی بدە. تەنها بە پشتبەستن بە زانیاریی خوارەوە وەڵام بدە و ئەگەر زانیارییەک نییە، بە ڕوونی بڵێ.\n\n${context}\n\nداواکاری خوێنەر: ${prompt}`);
+    const context="کتێب: "+selected.title+"\\nنووسەر: "+selected.author+"\\nپۆل: "+selected.category+"\\n\\nدەقی بەردەست لە کتێب/پوختە:\\n"+sourceText;
+    await runAI("تۆ یاریدەدەری کتێبخانەی کوردییت. وەڵام بە سۆرانیی سروشتی بدە. تەنها بە پشتبەستن بە زانیاریی خوارەوە وەڵام بدە و ئەگەر زانیارییەک نییە، بە ڕوونی بڵێ.\\n\\n"+context+"\\n\\nداواکاری خوێنەر: "+prompt);
   }
+  async function summarizeSelectedBook(){
+    if(!selected){setAiOpen(true);setNotice("کتێبێک هەڵبژێرە، پاشان لەسەر ئایکۆنی AI کرتە بکە.");return;}
+    if(!aiConfig.apiKey.trim()){setSettingsOpen(true);setNotice("API Key نەدۆزرایەوە؛ لە ڕێکخستنەکان زیادیکە.");return;}
+    setAiOpen(true);
+    await askBookAI("پوختەیەکی تەواو و ڕێکخراوی ئەم کتێبە بە سۆرانی بنووسە. بیرۆکە سەرەکییەکان، بابەتە گرنگەکان و ئەنجامی کتێب بە شێوەی خاڵ‌بەندی و پاشان پوختەی کورت بدە. هیچ زانیارییەک لە دەرەوەی دەقی بەردەست زیاد مەکە.");
+  }
+
   async function loadSourceSummary(id:string):Promise<SourceSummaryRow|null>{
     const hit=sourceIndex.find(x=>x.id===id);
     if(!hit)return null;
@@ -784,6 +791,12 @@ function App(){
         <button className={tab==="internet"?"active":""} onClick={()=>setTab("internet")}><span className="nav-icon">🌐</span><span>ئینتەرنێت</span></button>
         <button onClick={()=>setNotebookOpen(true)}><span className="nav-icon">▤</span><span>تۆمار</span></button>
       </nav>
+      <div className="ai-fab-wrap">
+        <button className={`ai-fab ${aiBusy?"busy":""}`} onClick={()=>{if(!aiConfig.apiKey.trim()){setSettingsOpen(true);setNotice("API Key زیاد بکە بۆ بەکارهێنانی AI.");return;}setAiOpen(true);}} aria-label="یاریدەدەری AI" title="یاریدەدەری AI">
+          <span className="ai-fab-icon">✦</span><span className="ai-fab-badge">AI</span>
+        </button>
+        <button className="ai-fab-summary" onClick={()=>void summarizeSelectedBook()} disabled={aiBusy} aria-label="پوختەکردنەوەی کتێب">{aiBusy?"⏳":"📝"} <span>پوختە</span></button>
+      </div>
       <nav className="mobile-bottom-nav" aria-label="گەشتکردن">
         <button className={tab==="home"?"active":""} onClick={()=>setTab("home")}><span className="nav-icon">⌂</span><small>سەرەتا</small></button>
         <button className={tab==="library"?"active":""} onClick={()=>setTab("library")}><span className="nav-icon">▦</span><small>کتێبخانە</small></button>
