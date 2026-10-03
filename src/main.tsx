@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import * as pdfjsLib from "pdfjs-dist";
+import { TextLayer } from "pdfjs-dist";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import ePub from "epubjs";
+import { SocialLogin } from "@capgo/capacitor-social-login";
 import type { Book, Quote, Summary, Author, Highlight, Note } from "./types";
+import bundledBooks from "./data/library.json";
+import bundledQuotes from "./data/quotes.json";
+import bundledAuthors from "./data/authors.json";
 import { getBookFile, getBookState, getBooks, getSummaries, getQuotes, getAuthors, saveBook, saveBookState, saveProgress, saveSummaries, saveQuotes, saveAuthors, getExtractedText, saveExtractedText, searchExtractedText, getHighlights, saveHighlight, deleteHighlight, getNotes, saveNote, deleteNote, getAIHistory, saveAIHistory, clearAIHistory } from "./storage";
 import "./styles.css";
 import "./styles/themes.css";
@@ -22,6 +30,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { loadKurdishFonts } from "./lib/fontLoader";
 
 
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const seed: Book[] = [
   { id:"demo-1", title:"نموونەی کتێبی یەکەم", author:"کتێبخانەی کوردی", category:"ئەدەب", language:"کوردی", format:"txt", summary:"ئەمە کتێبێکی نموونەییە بۆ تاقیکردنەوەی خوێندنەوە.", addedAt:Date.now(), source:"bundle" },
@@ -43,35 +52,6 @@ type GoogleProfile = { id:string; email?:string; name?:string; picture?:string }
 type SourcePackIndex = { file:string; count:number; ids:string[] };
 type SourceSummaryManifest = { version:number; generatedAt?:string; total:number; packSize:number; packs:SourcePackIndex[] };
 type SourceSummaryRow = { id:string; bookId?:string; title:string; author?:string; textOriginal:string; textKu?:string; wordCount?:number; source?:string; sourceUrl?:string; rights?:string };
-
-type PdfJsModule = typeof import("pdfjs-dist");
-let pdfjsCache: PdfJsModule | null = null;
-let pdfjsWorkerReady = false;
-async function getPdfJs(): Promise<PdfJsModule> {
-  if (!pdfjsCache) pdfjsCache = await import("pdfjs-dist");
-  if (!pdfjsWorkerReady) {
-    const worker = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
-    pdfjsCache.GlobalWorkerOptions.workerSrc = worker.default;
-    pdfjsWorkerReady = true;
-  }
-  return pdfjsCache;
-}
-async function getSocialLogin() {
-  const module = await import("@capgo/capacitor-social-login");
-  return module.SocialLogin;
-}
-function assetUrl(path: string): string {
-  return new URL(path.replace(/^\//, ""), document.baseURI).toString();
-}
-async function readJsonAsset<T>(path: string, fallback: T): Promise<T> {
-  try {
-    const response = await fetch(assetUrl(path), { cache: "force-cache" });
-    if (!response.ok) return fallback;
-    return await response.json() as T;
-  } catch {
-    return fallback;
-  }
-}
 
 function loadAIConfig():AIConfig{
   try{
@@ -185,14 +165,13 @@ function App(){
   const [quoteBusy,setQuoteBusy]=useState(false);
   const translationStopRef=useRef(false);
   const sourcePackCache=useRef(new Map<string,SourceSummaryRow[]>());
-  const summariesLoadedRef=useRef(false);
   const [googleProfile,setGoogleProfile]=useState<GoogleProfile|null>(null);
   const [googleClientId,setGoogleClientId]=useState(()=>localStorage.getItem("kurdish-library-google-client-id")||(import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID||"").trim());
 
   useEffect(()=>{
     const id=googleClientId.trim();
     if(!id) return;
-    getSocialLogin().then(SocialLogin=>SocialLogin.initialize({google:{webClientId:id,mode:"online"}})).catch(()=>{});
+    SocialLogin.initialize({google:{webClientId:id,mode:"online"}}).catch(()=>{});
   },[googleClientId]);
   function saveGoogleClientId(){
     const id=googleClientId.trim();
@@ -204,7 +183,6 @@ function App(){
   async function googleSignIn(){
     if(!googleClientId){setNotice("تکایە Google Web Client ID دابین بکە.");return;}
     try{
-      const SocialLogin=await getSocialLogin();
       const res:any=await SocialLogin.login({provider:"google",options:{scopes:["email","profile"],filterByAuthorizedAccounts:false}});
       const gp=res?.result?.profile||{};
       const profile:GoogleProfile={id:gp.id||"",email:gp.email||undefined,name:gp.name||undefined,picture:gp.imageUrl||undefined};
@@ -212,7 +190,7 @@ function App(){
       setNotice("بە Google چوویتە ژوورەوە ✓");
     }catch(e:any){setNotice("چوونەژوورەوەی Google سەرکەوتوو نەبوو: "+(e?.message||"هەڵە"))}
   }
-  async function googleSignOut(){try{const SocialLogin=await getSocialLogin();await SocialLogin.logout({provider:"google"});}catch{} setGoogleProfile(null); localStorage.removeItem("kurdish-library-google-profile"); setNotice("لە Google دەرچوویت.");}
+  async function googleSignOut(){try{await SocialLogin.logout({provider:"google"});}catch{} setGoogleProfile(null); localStorage.removeItem("kurdish-library-google-profile"); setNotice("لە Google دەرچوویت.");}
   async function persistNote(note: Note){
     await saveNote(note);
     setNotes(await getNotes());
@@ -228,33 +206,45 @@ function App(){
     setNotice("تێبینی سڕایەوە.");
   }
 
-  useEffect(()=>{fetch(assetUrl("data/source-summaries/manifest.json")).then(r=>r.ok?r.json():null).then((manifest)=>{if(manifest?.packs?.length)setSourceManifest(manifest);}).catch(()=>{}); getNotes().then(setNotes).catch(()=>{}); getHighlights().then(setHighlights).catch(()=>{}); getAIHistory().then(setAiHistory).catch(()=>{}); try{const p=localStorage.getItem("kurdish-library-google-profile");if(p)setGoogleProfile(JSON.parse(p));}catch{} },[]);
+  useEffect(()=>{fetch("/data/source-summaries/manifest.json").then(r=>r.ok?r.json():null).then((manifest)=>{if(manifest?.packs?.length)setSourceManifest(manifest);}).catch(()=>{}); getNotes().then(setNotes).catch(()=>{}); getHighlights().then(setHighlights).catch(()=>{}); getAIHistory().then(setAiHistory).catch(()=>{}); try{const p=localStorage.getItem("kurdish-library-google-profile");if(p)setGoogleProfile(JSON.parse(p));}catch{} },[]);
   useEffect(()=>{
-    let cancelled=false;
-    (async()=>{
-      const [bb,bq,ba]=await Promise.all([
-        readJsonAsset<Book[]>("data/library.json",[]),
-        readJsonAsset<Quote[]>("data/quotes.json",[]),
-        readJsonAsset<Author[]>("data/authors.json",[]),
-      ]);
-      if(cancelled)return;
-      setBooks(bb.length?[...bb,...seed]:seed);
-      setQuotes(bq); setAuthors(ba);
-      const [savedBooks,savedQuotes,savedAuthors]=await Promise.all([
-        getBooks().catch(()=>[]), getQuotes().catch(()=>[]), getAuthors().catch(()=>[])
-      ]);
-      if(cancelled)return;
-      const bookMap=new Map<string,Book>(bb.map(b=>[b.id,b]));
-      for(const book of savedBooks)bookMap.set(book.id,book);
-      setBooks([...bookMap.values()]);
-      const quoteMap=new Map<string,Quote>(bq.map(q=>[q.id,q]));
-      for(const quote of savedQuotes)quoteMap.set(quote.id,quote);
-      setQuotes([...quoteMap.values()]);
-      const authorMap=new Map<string,Author>(ba.map(a=>[a.id,a]));
-      for(const author of savedAuthors)authorMap.set(author.id,author);
-      setAuthors([...authorMap.values()]);
-    })();
-    return()=>{cancelled=true};
+    const bb=(bundledBooks as Book[]); const bq=(bundledQuotes as Quote[]); const ba=(bundledAuthors as Author[]);
+    setBooks(prev=>prev.length>3?prev:[...bb,...prev]); setQuotes(bq); setAuthors(ba);
+    getBooks().then(saved=>{
+      const map=new Map<string,Book>((bundledBooks as Book[]).map(b=>[b.id,b]));
+      for(const book of saved) map.set(book.id,book);
+      const merged=[...map.values()];
+      setBooks(merged);
+    }).catch(()=>{});
+    getQuotes().then(saved=>{
+      const map=new Map<string,Quote>((bundledQuotes as Quote[]).map(q=>[q.id,q]));
+      for(const quote of saved) map.set(quote.id,quote);
+      setQuotes([...map.values()]);
+    }).catch(()=>{});
+    getAuthors().then(saved=>{
+      const map=new Map<string,Author>((bundledAuthors as Author[]).map(a=>[a.id,a]));
+      for(const author of saved) map.set(author.id,author);
+      setAuthors([...map.values()]);
+    }).catch(()=>{});
+    getSummaries().then(async saved=>{
+      const map=new Map<string,Summary>();
+      for(const item of saved) map.set(item.id,item);
+      try{
+        const manifest=await fetch("/data/summaries/manifest.json").then(r=>r.ok?r.json():null);
+        if(manifest?.packs?.length){
+          for(let i=0;i<manifest.packs.length;i+=6){
+            const batch=manifest.packs.slice(i,i+6);
+            const parts=await Promise.all(batch.map((p:any)=>fetch("/data/summaries/"+p.file).then(r=>r.ok?r.json():[])));
+            for(const part of parts) if(Array.isArray(part)) for(const item of part){if(!map.has(item.id))map.set(item.id,item);}
+            setSummaries([...map.values()]);
+          }
+        }else{
+          setSummaries([...map.values()]);
+        }
+      }catch{
+        setSummaries([...map.values()]);
+      }
+    }).catch(()=>{});
   },[]);
   useEffect(()=>{
     const q=query.trim();
@@ -264,24 +254,6 @@ function App(){
     return ()=>{cancelled=true};
   },[query]);
   useEffect(()=>{ if(!notice)return; const t=setTimeout(()=>setNotice(""),2200); return()=>clearTimeout(t); },[notice]);
-  useEffect(()=>{
-    if(tab!=="summaries" || summariesLoadedRef.current)return;
-    summariesLoadedRef.current=true;
-    getSummaries().then(async saved=>{
-      const map=new Map<string,Summary>();
-      for(const item of saved)map.set(item.id,item);
-      const manifest=await readJsonAsset<any>("data/summaries/manifest.json",null);
-      if(manifest?.packs?.length){
-        for(let i=0;i<manifest.packs.length;i+=6){
-          const batch=manifest.packs.slice(i,i+6);
-          const parts=await Promise.all(batch.map((p:any)=>readJsonAsset<any[]>(`data/summaries/${p.file}`,[])));
-          for(const part of parts)for(const item of part)if(!map.has(item.id))map.set(item.id,item);
-          setSummaries([...map.values()]);
-        }
-      }
-      setSummaries([...map.values()]);
-    }).catch(()=>setSummaries([]));
-  },[tab]);
   useEffect(()=>{setLibraryPage(1);},[query,category,tab,viewMode]);
   useEffect(()=>{
     if(!aiOpen)return;
@@ -575,8 +547,7 @@ function App(){
     try{
       const { createWorker }=await import("tesseract.js");
       const worker=await createWorker("kur");
-      const pdfjs=await getPdfJs();
-    const pdf=await pdfjs.getDocument({data:await blob.arrayBuffer()}).promise;
+      const pdf=await pdfjsLib.getDocument({data:await blob.arrayBuffer()}).promise;
       const pages:string[]=[];
       const limit=Math.min(pdf.numPages,30);
       for(let n=1;n<=limit;n++){
@@ -631,7 +602,7 @@ function App(){
     <header><div className="brand-area"><div className="brand">📚</div><div><h1>کتێبخانەی کوردی</h1><p>خوێندنەوەی سۆرانی — ئۆفلاین</p></div></div>
       <div className="top-actions"><label className="import">➕ هاوردەکردن<input hidden type="file" multiple accept=".pdf,.epub,.txt,.html,.htm" onChange={importFiles}/></label>
       <label className="import">🗂️ داتاپاک<input hidden type="file" accept=".json,application/json" onChange={importDataPack}/></label><button onClick={()=>setAiOpen(true)}>🤖 AI</button><button onClick={()=>setSettingsOpen(true)}>⚙️</button><button onClick={()=>setTheme(theme==="light"?"dark":theme==="dark"?"sepia":theme==="sepia"?"eink":"light")}>{theme==="light"?"☀️":theme==="dark"?"🌙":theme==="sepia"?"📜":"📄"}</button></div></header>
-    <main>      <nav className="main-nav"><button className={tab==="home"?"active":""} onClick={()=>setTab("home")}>🏠 سەرەتا</button><button className={tab==="library"?"active":""} onClick={()=>setTab("library")}>📚 کتێبخانە</button><button className={tab==="summaries"?"active":""} onClick={()=>setTab("summaries")}>✨ پوختەکان</button><button className={tab==="quotes"?"active":""} onClick={()=>setTab("quotes")}>💬 وتەکان</button><button className={tab==="favorites"?"active":""} onClick={()=>setTab("favorites")}>❤️ دڵخوازەکان</button><button className={tab==="media"?"active":""} onClick={()=>setTab("media")}>🎬 میدیا پلەیەر</button><button onClick={()=>setNotebookOpen(true)}>🗒️ تۆمار و تێبینی</button></nav>
+    <main>      <nav className="main-nav"><button className={tab==="home"?"active":""} onClick={()=>setTab("home")}>🏠 سەرەتا</button><button className={tab==="library"?"active":""} onClick={()=>setTab("library")}>📚 کتێبخانە</button><button className={tab==="summaries"?"active":""} onClick={()=>setTab("summaries")}>✨ پوختەکان</button><button className={tab==="quotes"?"active":""} onClick={()=>setTab("quotes")}>💬 وتەکان</button><button className={tab==="favorites"?"active":""} onClick={()=>setTab("favorites")}>❤️ دڵخوازەکان</button><button className={tab==="media"?"active":""} onClick={()=>setTab("media")}>🎬 میدیا پلەیەر</button><button onClick={()=>setNotebookOpen(true)}>🗒️ تۆمار و تێبینی</button></nav><nav className="mobile-bottom-nav" aria-label="گەشتکردن"><button className={tab==="home"?"active":""} onClick={()=>setTab("home")}><span>⌂</span><small>سەرەتا</small></button><button className={tab==="library"?"active":""} onClick={()=>setTab("library")}><span>▦</span><small>کتێبخانە</small></button><button className={tab==="summaries"?"active":""} onClick={()=>setTab("summaries")}><span>✦</span><small>پوختە</small></button><button className={tab==="favorites"?"active":""} onClick={()=>setTab("favorites")}><span>♡</span><small>دڵخواز</small></button><button onClick={()=>setSettingsOpen(true)}><span>⚙</span><small>ڕێکخستن</small></button></nav>
 <section className="hero"><div><div className="eyebrow">KURDISH LIBRARY • OFFLINE</div><h2>هەموو کتێبەکانت لە یەک شوێن</h2><p>گەڕان، خوێندنەوە، پاشەکەوتکردن و خوێندنەوەی PDF/EPUB بە شێوەی ئۆفلاین.</p></div><div className="stats"><strong>{books.length}</strong><span>کتێب</span><strong>{summaries.length}</strong><span>پوختەی سۆرانی</span><strong>{sourceManifest?.total||0}</strong><span>سەرچاوە</span><strong>{filtered.length}</strong><span>ئەنجام</span></div><input className="search" placeholder="گەڕان بە ناوی کتێب، نووسەر یان ناوەڕۆک..." value={query} onChange={e=>setQuery(e.target.value)}/></section>
       <nav className="chips">{categories.map(x=><button className={category===x?"active":""} onClick={()=>setCategory(x)} key={x}>{x}</button>)}</nav>
       <section className="home-tools"><button onClick={()=>setSettingsOpen(true)}>⚙️ ڕێکخستنەکان</button><span className="view-label">پیشاندان:</span>{(["grid","shelf","list","small"] as const).map(v=><button key={v} className={viewMode===v?"active-tool":""} onClick={()=>setViewMode(v)}>{v==="grid"?"▦ گرید":v==="shelf"?"▤ ڕەف":v==="list"?"☰ لیست":"▪ ئایکۆنی بچوک"}</button>)}<button onClick={()=>setNotice("بەشی پوختە و وتەکان بۆ داتای ئۆفلاین ئامادە کراوە")}>✨ پوختە و وتەکان</button><button onClick={()=>setNotice("Ink Reader: بۆ PDF لە خوێندنەوەدا چالاکی بکە")}>🖋️ Ink Reader</button></section>      {tab==="home"&&<>{resumeBooks.length>0&&<section className="resume-panel"><h2>↩️ بەردەوامبوون لە خوێندنەوە</h2><div className="resume-row">{resumeBooks.map(b=><button key={b.id} onClick={()=>openBook(b)}><strong>{b.title}</strong><small>{Math.round((states[b.id]?.progress||0)*100)}% خوێندراوەتەوە</small></button>)}</div></section>}</>}
@@ -680,8 +651,7 @@ async function extractPdfText(blob:Blob,id:string,setText:React.Dispatch<React.S
   try{
     const cached=await getExtractedText(id);
     if(cached){ setText(prev=>({...prev,[id]:cached})); return; }
-    const pdfjs=await getPdfJs();
-    const pdf=await pdfjs.getDocument({data:await blob.arrayBuffer()}).promise;
+    const pdf=await pdfjsLib.getDocument({data:await blob.arrayBuffer()}).promise;
     const chunks:string[]=[];
     for(let n=1;n<=pdf.numPages;n++){
       const page=await pdf.getPage(n);
@@ -721,8 +691,7 @@ function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage,jum
     let doc:any=null;
     (async()=>{
       try{
-        const pdfjs=await getPdfJs();
-        doc=await pdfjs.getDocument(url).promise;
+        doc=await pdfjsLib.getDocument(url).promise;
         if(cancelled){await doc.destroy();return;}
         setPdf(doc); setTotal(doc.numPages);
         setPage(Math.max(1,Math.min(doc.numPages,Math.floor(initialProgress*Math.max(0,doc.numPages-1))+1)));
@@ -764,12 +733,8 @@ function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage,jum
             layer.className="textLayer";
             layer.style.setProperty("--scale-factor",String(viewport.scale));
             pageWrap.appendChild(layer);
-            const pdfjs=await getPdfJs();
-            const TextLayer=(pdfjs as any).TextLayer;
-            if(TextLayer){
-              const textLayer=new TextLayer({textContentSource:textContent,viewport,container:layer});
-              await textLayer.render();
-            }
+            const textLayer=new TextLayer({textContentSource:textContent,viewport,container:layer});
+            await textLayer.render();
           }catch{}
           root.appendChild(pageWrap);
         } else {
@@ -826,7 +791,7 @@ function EpubReader({url,onProgress,onNotice}:{url:string;onProgress:(v:number)=
   const [zoom,setZoom]=useState(100);
   const [ready,setReady]=useState(false);
   const [label,setLabel]=useState("1");
-  useEffect(()=>{let book:any;let rendition:any;let cancelled=false;(async()=>{try{const {default:ePub}=await import("epubjs");book=ePub(url);rendition=book.renderTo(host.current!,{width:"100%",height:"100%",flow:"paginated",manager:"default"});renditionRef.current=rendition;rendition.on("relocated",(location:any)=>{const percentage=location?.start?.percentage;if(typeof percentage==="number")onProgress(Math.max(0,Math.min(1,percentage)));setLabel(String(location?.start?.displayed?.page||location?.start?.index||"1"));});await rendition.display();if(cancelled)return;rendition.themes.fontSize(zoom+"%");setReady(true);onNotice("EPUB ئامادەیە ✓");}catch{if(!cancelled)onNotice("نەتوانرا EPUB بکرێتەوە");}})();return()=>{cancelled=true;renditionRef.current=null;rendition?.destroy?.();book?.destroy?.();};},[url]);
+  useEffect(()=>{let book:any;let rendition:any;let cancelled=false;(async()=>{try{book=ePub(url);rendition=book.renderTo(host.current!,{width:"100%",height:"100%",flow:"paginated",manager:"default"});renditionRef.current=rendition;rendition.on("relocated",(location:any)=>{const percentage=location?.start?.percentage;if(typeof percentage==="number")onProgress(Math.max(0,Math.min(1,percentage)));setLabel(String(location?.start?.displayed?.page||location?.start?.index||"1"));});await rendition.display();if(cancelled)return;rendition.themes.fontSize(zoom+"%");setReady(true);onNotice("EPUB ئامادەیە ✓");}catch{if(!cancelled)onNotice("نەتوانرا EPUB بکرێتەوە");}})();return()=>{cancelled=true;renditionRef.current=null;rendition?.destroy?.();book?.destroy?.();};},[url]);
   function changeZoom(delta:number){setZoom(z=>{const next=Math.max(70,Math.min(180,z+delta));renditionRef.current?.themes?.fontSize?.(next+"%");return next;});}
   function go(delta:number){if(delta<0)renditionRef.current?.prev?.();else renditionRef.current?.next?.();}
   const touch=useRef({x:0,y:0,pinch:0});
