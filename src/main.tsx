@@ -653,6 +653,58 @@ function App(){
     if("speechSynthesis" in window){ window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text); u.lang="ku"; u.rate=.9; window.speechSynthesis.speak(u); setNotice("خوێندنەوە دەستی پێکرد"); }
     else setNotice("TTS لەم ئامێرەدا بەردەست نییە");
   }
+  async function searchGutenberg(){
+    const q=internetQuery.trim();
+    if(!q){setNotice("ناوی کتێب یان نووسەر بنووسە.");return;}
+    setInternetBusy(true);
+    try{
+      const r=await fetch("https://gutendex.com/books?search="+encodeURIComponent(q));
+      if(!r.ok) throw new Error("گەڕان سەرکەوتوو نەبوو");
+      const data=await r.json();
+      setInternetBooks(Array.isArray(data?.results)?data.results:[]);
+      setNotice((data?.results?.length||0)+" کتێب دۆزرایەوە ✓");
+    }catch(e:any){setInternetBooks([]);setNotice(e?.message||"نەتوانرا لە Gutenberg بگەڕێین.");}
+    finally{setInternetBusy(false);}
+  }
+
+  function gutenbergFormat(book:any){
+    const f=book?.formats||{};
+    const pick=(keys:string[])=>keys.map(k=>f[k]).find((u:any)=>typeof u==="string"&&/^https?:\/\//.test(u))||"";
+    return {
+      url:pick(["application/epub+zip","text/plain; charset=utf-8","text/plain","text/html; charset=utf-8","text/html"]),
+      format:f["application/epub+zip"]?"epub":(f["text/plain; charset=utf-8"]||f["text/plain"])?"txt":"html"
+    };
+  }
+
+  async function importGutenbergBook(item:any){
+    const id=Number(item?.id||0); if(!id)return;
+    if(item?.copyright===true){setNotice("ئەم کتێبە copyright ـی هەیە و خۆکارانە ناهێنرێت.");return;}
+    const chosen=gutenbergFormat(item);
+    if(!chosen.url){setNotice("فۆرماتی خوێندنەوەی گونجاو نەدۆزرایەوە.");return;}
+    setInternetImporting(id);
+    try{
+      const response=await fetch(chosen.url);
+      if(!response.ok)throw new Error("داگرتنی کتێب سەرکەوتوو نەبوو");
+      const blob=await response.blob();
+      const title=String(item.title||"Gutenberg "+id).replace(/\s+/g," ").trim();
+      const author=String(item.authors?.[0]?.name||"Unknown");
+      const book:Book={
+        id:"gutenberg-"+id,title,author,
+        category:String(item.subjects?.[0]||"کلاسیک"),
+        language:String(item.languages?.[0]||"en"),
+        format:chosen.format as Book["format"],
+        fileName:title+"."+chosen.format,sizeBytes:blob.size,addedAt:Date.now(),
+        source:"import",sourceUrl:"https://www.gutenberg.org/ebooks/"+id,
+        rights:"Project Gutenberg catalog reports no current US copyright restriction; verify applicable local rights before redistribution."
+      };
+      await saveBook(book,blob);
+      setBooks(prev=>[book,...prev.filter(x=>x.id!==book.id)]);
+      setNotice("کتێبەکە هێنرا بۆ کتێبخانە ✓");
+      openBook(book);
+    }catch(e:any){setNotice(e?.message||"نەتوانرا کتێبەکە بهێنرێت.");}
+    finally{setInternetImporting(null);}
+  }
+
   async function importFiles(e:React.ChangeEvent<HTMLInputElement>){
     const files=Array.from(e.target.files||[]);
     for(const file of files){
@@ -756,7 +808,7 @@ function App(){
           })}
         </div>
       </section>}
-      {tab!=="media"&&<section className="notebook-launch"><button onClick={()=>setNotebookOpen(true)}>🗒️ تۆمار و تێبینییەکان</button><span>{Object.values(states).filter(s=>s.note).length} تێبینی</span></section>}{tab!=="summaries"&&tab!=="quotes"&&tab!=="media"&&<section className={`grid view-${viewMode}`}>{pagedBooks.map(b=><article className="card" key={b.id} onClick={()=>openBook(b)}><div className="cover">{b.coverPath?<img src={b.coverPath} alt="" loading="lazy"/>:b.format==="pdf"?"📕":b.format==="epub"?"📘":"📖"}</div><div className="card-body"><small>{b.category} · {b.format.toUpperCase()}</small><h3>{b.title}</h3><p>{b.author}</p><span>{b.summaryKu||b.summary||"کلیک بکە بۆ خوێندنەوە."}</span>{states[b.id]?.progress>0&&<div className="book-progress"><i style={{width:`${Math.round((states[b.id]?.progress||0)*100)}%`}}/></div>}</div></article>)}</section>}{tab!=="summaries"&&tab!=="quotes"&&tab!=="media"&&<PageControls page={safeLibraryPage} total={totalLibraryPages} onChange={setLibraryPage}/>}
+      {tab!=="media"&&<section className="notebook-launch"><button onClick={()=>setNotebookOpen(true)}>🗒️ تۆمار و تێبینییەکان</button><span>{Object.values(states).filter(s=>s.note).length} تێبینی</span></section>}{tab!=="summaries"&&tab!=="quotes"&&tab!=="media"&&tab!=="internet"&&<section className={`grid view-${viewMode}`}>{pagedBooks.map(b=><article className="card" key={b.id} onClick={()=>openBook(b)}><div className="cover">{b.coverPath?<img src={b.coverPath} alt="" loading="lazy"/>:b.format==="pdf"?"📕":b.format==="epub"?"📘":"📖"}</div><div className="card-body"><small>{b.category} · {b.format.toUpperCase()}</small><h3>{b.title}</h3><p>{b.author}</p><span>{b.summaryKu||b.summary||"کلیک بکە بۆ خوێندنەوە."}</span>{states[b.id]?.progress>0&&<div className="book-progress"><i style={{width:`${Math.round((states[b.id]?.progress||0)*100)}%`}}/></div>}</div></article>)}</section>}{tab!=="summaries"&&tab!=="quotes"&&tab!=="media"&&tab!=="internet"&&<PageControls page={safeLibraryPage} total={totalLibraryPages} onChange={setLibraryPage}/>}
 
       {selected&&detailsOpen&&<div className="modal" onClick={()=>setDetailsOpen(false)}><div className="book-details" onClick={e=>e.stopPropagation()}><div className="reader-head"><div><strong>{selected.title}</strong><small>{selected.author}</small></div><button onClick={()=>setDetailsOpen(false)}>✕</button></div><div className="book-details-grid"><div className="detail-cover">{selected.coverPath?<img src={selected.coverPath} alt="" />:<div>{selected.format==="pdf"?"📕":selected.format==="epub"?"📘":"📖"}</div>}</div><div><h2>{selected.title}</h2><p className="author-line">✍️ {selected.author}</p><p>📂 {selected.category} · {selected.language}</p><p>📄 {selected.format.toUpperCase()}</p>{selected.sizeBytes&&<p>💾 {(selected.sizeBytes/1024/1024).toFixed(1)} MB</p>}<div className="progress-line"><span style={{width:`${Math.round((states[selected.id]?.progress||0)*100)}%`}} /></div><small>{Math.round((states[selected.id]?.progress||0)*100)}% خوێندراوەتەوە</small></div></div>{(selected.summaryKu||selected.summary)&&<section className="detail-summary"><h3>✨ پوختە</h3><p>{selected.summaryKu||selected.summary}</p></section>}{summaries.filter(s=>s.bookId===selected.id).slice(0,1).map(s=><section className="detail-summary" key={s.id}><h3>✨ پوختەی ئۆفلاین</h3><p>{s.textKu}</p></section>)}<div className="detail-quotes">{quotes.filter(q=>q.author===selected.author||q.authorId===selected.author).slice(0,3).map(q=><blockquote key={q.id}>“{q.textKu}”<small>— {q.author}</small></blockquote>)}</div><div className="detail-actions"><button onClick={()=>{setDetailsOpen(false)}}>📖 خوێندنەوە</button><button onClick={fetchInternetSummary} disabled={translationBusy}>🌐 {translationBusy?"پوختە دەهێنرێت…":"هێنانی پوختەی ئینتەرنێت"}</button><button onClick={()=>toggle("favorite")}>{states[selected.id]?.favorite?"❤️ دڵخوازە":"🤍 زیادکردن بۆ دڵخواز"}</button><button onClick={()=>toggle("bookmark")}>🔖 نیشانە</button>{sourceIdSet.has(selected.id)&&!summaryIdSet.has(selected.id)&&<button onClick={translateSelectedSummary} disabled={translationBusy}>🌐 وەرگێڕینی پوختە</button>}{sourceIdSet.has(selected.id)&&summaryIdSet.has(selected.id)&&<span className="translated-badge">✅ پوختەی سۆرانی</span>}</div></div></div>}
       {selected&&!detailsOpen&&<div className="modal" onClick={closeReader}><div className="reader" onClick={e=>e.stopPropagation()}><div className="reader-head"><div><strong>{selected.title}</strong><small>{selected.author} · {selected.format.toUpperCase()}</small></div><button onClick={closeReader}>✕</button></div>
