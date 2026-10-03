@@ -764,8 +764,12 @@ function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage,jum
             layer.className="textLayer";
             layer.style.setProperty("--scale-factor",String(viewport.scale));
             pageWrap.appendChild(layer);
-            const textLayer=new (pdfjs as any).TextLayer({textContentSource:textContent,viewport,container:layer});
-            await textLayer.render();
+            const pdfjs=await getPdfJs();
+            const TextLayer=(pdfjs as any).TextLayer;
+            if(TextLayer){
+              const textLayer=new TextLayer({textContentSource:textContent,viewport,container:layer});
+              await textLayer.render();
+            }
           }catch{}
           root.appendChild(pageWrap);
         } else {
