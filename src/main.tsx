@@ -957,18 +957,20 @@ function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage,jum
   const [total,setTotal]=useState(0);
   const [zoom,setZoom]=useState(1);
   const [loading,setLoading]=useState(true);
+  const [error,setError]=useState<string|null>(null);
 
   useEffect(()=>{
     let cancelled=false;
     let doc:any=null;
     (async()=>{
       try{
+        setLoading(true); setError(null);
         doc=await pdfjsLib.getDocument({url}).promise;
         if(cancelled){await doc.destroy();return;}
         setPdf(doc); setTotal(doc.numPages);
         setPage(Math.max(1,Math.min(doc.numPages,Math.floor(initialProgress*Math.max(0,doc.numPages-1))+1)));
         onNotice("PDF ئامادەیە ✓");
-      }catch{onNotice("نەتوانرا PDF بکرێتەوە");}
+      }catch(e){setLoading(false);setError("ئەم PDF ـە نەتوانرا بکرێتەوە. فایلەکە لەوانەیە خراب بێت یان دەستگەیشتن پێی نەکرێت.");onNotice("نەتوانرا PDF بکرێتەوە");}
     })();
     return()=>{cancelled=true;setPdf(null);if(doc)void doc.destroy();};
   },[url]);
@@ -1022,7 +1024,7 @@ function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage,jum
           canvas.remove();
         }
         setLoading(false);
-      }catch{if(!cancelled){setLoading(false);onNotice("نەتوانرا لاپەڕەکە پیشان بدرێت");}}
+      }catch{if(!cancelled){setLoading(false);setError("ئەم لاپەڕەیە نەتوانرا پیشان بدرێت.");onNotice("نەتوانرا لاپەڕەکە پیشان بدرێت");}}
     })();
     return()=>{cancelled=true;};
   },[pdf,page,split,zoom]);
@@ -1052,6 +1054,7 @@ function PdfReader({url,onProgress,onNotice,ink,split,initialProgress,onPage,jum
     </div>
         <div ref={host} className="pdf-page-host"/>
     {loading&&<div className="reader-message">لاپەڕەکە بار دەکرێت…</div>}
+    {error&&<div className="reader-error" role="alert"><strong>⚠️ کێشەی خوێندنەوە</strong><span>{error}</span><button onClick={()=>{setError(null);setLoading(true);setPdf(null);}}>دووبارە هەوڵبدە</button></div>}
     <div className="zoom-bar"><button onClick={()=>setZoom(z=>Math.max(.6,z-.15))}>−</button><span>{Math.round(zoom*100)}%</span><button onClick={()=>setZoom(z=>Math.min(3,z+.15))}>+</button><button onClick={()=>setZoom(1)}>100%</button></div>
     <div className="page-indicator">{page} / {total||"…"}</div>
   </div>
