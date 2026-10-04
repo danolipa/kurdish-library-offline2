@@ -32,12 +32,6 @@ import { loadKurdishFonts } from "./lib/fontLoader";
 // PDF.js runs without a Web Worker for maximum Capacitor/Android WebView compatibility.
 pdfjsLib.GlobalWorkerOptions.workerSrc = "";
 
-const seed: Book[] = [
-  { id:"demo-1", title:"نموونەی کتێبی یەکەم", author:"کتێبخانەی کوردی", category:"ئەدەب", language:"کوردی", format:"txt", summary:"ئەمە کتێبێکی نموونەییە بۆ تاقیکردنەوەی خوێندنەوە.", addedAt:Date.now(), source:"bundle" },
-  { id:"demo-2", title:"زانست و ژیان", author:"کتێبخانەی کوردی", category:"زانست", language:"کوردی", format:"txt", summary:"بابەتێکی نموونەیی لەسەر زانست و ژیان.", addedAt:Date.now()-1, source:"bundle" },
-  { id:"demo-3", title:"مێژووی کورد", author:"کتێبخانەی کوردی", category:"مێژوو", language:"کوردی", format:"txt", summary:"نموونەیەک بۆ پۆلێنکردن و گەڕان.", addedAt:Date.now()-2, source:"bundle" }
-];
-
 const AI_PROVIDERS = {
   groq: { label:"Groq", base:"https://api.groq.com/openai/v1", defaultModel:"openai/gpt-oss-120b" },
   openai: { label:"OpenAI", base:"https://api.openai.com/v1", defaultModel:"gpt-4o-mini" },
@@ -113,7 +107,7 @@ function PageControls({page,total,onChange}:{page:number;total:number;onChange:(
 }
 
 function App(){
-  const [books,setBooks]=useState<Book[]>(seed);
+  const [books,setBooks]=useState<Book[]>([]);
   const [query,setQuery]=useState("");
   const [globalSearchOpen,setGlobalSearchOpen]=useState(false);
   const [category,setCategory]=useState("هەموو");
@@ -219,7 +213,7 @@ function App(){
   useEffect(()=>{fetch("/data/source-summaries/manifest.json").then(r=>r.ok?r.json():null).then((manifest)=>{if(manifest?.packs?.length)setSourceManifest(manifest);}).catch(()=>{}); getNotes().then(setNotes).catch(()=>{}); getHighlights().then(setHighlights).catch(()=>{}); getAIHistory().then(setAiHistory).catch(()=>{}); try{const p=localStorage.getItem("kurdish-library-google-profile");if(p)setGoogleProfile(JSON.parse(p));}catch{} },[]);
   useEffect(()=>{
     const bb=(bundledBooks as Book[]); const bq=(bundledQuotes as Quote[]); const ba=(bundledAuthors as Author[]);
-    setBooks(prev=>prev.length>3?prev:[...bb,...prev]); setQuotes(bq); setAuthors(ba);
+    setBooks(prev=>prev.length?prev:[...bb]); setQuotes(bq); setAuthors(ba);
     getBooks().then(saved=>{
       const map=new Map<string,Book>((bundledBooks as Book[]).map(b=>[b.id,b]));
       for(const book of saved) map.set(book.id,book);
@@ -833,9 +827,10 @@ function App(){
         <button className={tab==="internet"?"active":""} onClick={()=>setTab("internet")}><span className="nav-icon">🌐</span><small>ئینتەرنێت</small></button>
         <button onClick={()=>setSettingsOpen(true)}><span className="nav-icon">☰</span><small>زیاتر</small></button>
       </nav>
-<section className="hero"><div><div className="eyebrow">KURDISH LIBRARY • OFFLINE</div><h2>هەموو کتێبەکانت لە یەک شوێن</h2><p>گەڕان، خوێندنەوە، پاشەکەوتکردن و خوێندنەوەی PDF/EPUB بە شێوەی ئۆفلاین.</p></div><div className="stats"><strong>{books.length}</strong><span>کتێب</span><strong>{summaries.length}</strong><span>پوختەی سۆرانی</span><strong>{sourceManifest?.total||0}</strong><span>سەرچاوە</span><strong>{filtered.length}</strong><span>ئەنجام</span></div><input className="search" placeholder="گەڕان بە ناوی کتێب، نووسەر یان ناوەڕۆک..." value={query} onChange={e=>setQuery(e.target.value)}/></section>
+{(tab==="home"||tab==="library"||tab==="favorites")&&<><section className="hero"><div><div className="eyebrow">KURDISH LIBRARY • OFFLINE</div><h2>هەموو کتێبەکانت لە یەک شوێن</h2><p>گەڕان، خوێندنەوە، پاشەکەوتکردن و خوێندنەوەی PDF/EPUB بە شێوەی ئۆفلاین.</p></div><div className="stats"><strong>{books.length}</strong><span>کتێب</span><strong>{summaries.length}</strong><span>پوختەی سۆرانی</span><strong>{sourceManifest?.total||0}</strong><span>سەرچاوە</span><strong>{filtered.length}</strong><span>ئەنجام</span></div><input className="search" placeholder="گەڕان بە ناوی کتێب، نووسەر یان ناوەڕۆک..." value={query} onChange={e=>setQuery(e.target.value)}/></section>
       <nav className="chips">{categories.map(x=><button className={category===x?"active":""} onClick={()=>setCategory(x)} key={x}>{x}</button>)}</nav>
       <section className="home-tools"><button onClick={()=>setSettingsOpen(true)}>⚙️ ڕێکخستنەکان</button><span className="view-label">پیشاندان:</span>{(["grid","shelf","list","small"] as const).map(v=><button key={v} className={viewMode===v?"active-tool":""} onClick={()=>setViewMode(v)}>{v==="grid"?"▦ گرید":v==="shelf"?"▤ ڕەف":v==="list"?"☰ لیست":"▪ ئایکۆنی بچوک"}</button>)}<button onClick={()=>setNotice("بەشی پوختە و وتەکان بۆ داتای ئۆفلاین ئامادە کراوە")}>✨ پوختە و وتەکان</button><button onClick={()=>setNotice("Ink Reader: بۆ PDF لە خوێندنەوەدا چالاکی بکە")}>🖋️ Ink Reader</button></section>
+            </>}
       {tab==="home"&&<section className="home-hub" aria-label="بەشەکانی کتێبخانە"><div className="section-heading"><div><span className="eyebrow">KURDISH LIBRARY</span><h2>هەموو بەشەکان</h2></div><small>یەک کلیک بۆ چوونە ناو هەر بەشێک</small></div><div className="home-hub-grid"><button className="hub-card" onClick={()=>setTab("library")}><span className="hub-icon">📚</span><strong>کتێبخانە</strong><small>{books.length} کتێب</small></button><button className="hub-card" onClick={()=>setTab("summaries")}><span className="hub-icon">✨</span><strong>پوختەکان</strong><small>{summaries.length?`${summaries.length} پوختە`:"پوختەی کتێبەکان"}</small></button><button className="hub-card" onClick={()=>setTab("quotes")}><span className="hub-icon">💬</span><strong>وتەکان</strong><small>{quotes.length?`${quotes.length} وتە`:"وتەی هەڵبژێردراو"}</small></button><button className="hub-card" onClick={()=>setTab("favorites")}><span className="hub-icon">❤️</span><strong>دڵخوازەکان</strong><small>{favoriteBooks.length} کتێب</small></button><button className="hub-card" onClick={()=>setNotebookOpen(true)}><span className="hub-icon">🗒️</span><strong>تۆمار و تێبینی</strong><small>{notes.length} تێبینی</small></button><button className="hub-card" onClick={()=>setTab("media")}><span className="hub-icon">🎬</span><strong>میدیای پلەیەر</strong><small>دەنگ و ڤیدیۆ</small></button></div></section>}
       {tab==="home"&&<>{resumeBooks.length>0&&<section className="resume-panel"><h2>↩️ بەردەوامبوون لە خوێندنەوە</h2><div className="resume-row">{resumeBooks.map(b=><button key={b.id} onClick={()=>openBook(b)}><strong>{b.title}</strong><small>{Math.round((states[b.id]?.progress||0)*100)}% خوێندراوەتەوە</small></button>)}</div></section>}</>}
       {tab==="summaries"&&<section className="content-panel"><h2>✨ پوختەی کتێبەکان</h2><p>پوختەکان لە ناوخۆی ئامێر هەڵدەگیرێن و بۆ گەڕان و خوێندنەوەی ئۆفلاین بەکاردێن.</p>{summaries.length?<><div className="content-list">{pagedSummaries.map(s=><article key={s.id}><h3>{s.title}</h3><p>{s.textKu}</p><small>{s.wordCount?`ژمارەی وشە: ${s.wordCount} · `:""}{s.source||"داتای ئۆفلاین"}</small></article>)}</div><PageControls page={safeSummaryPage} total={totalSummaryPages} onChange={setSummaryPage}/></>:<div className="empty-state"><strong>هێشتا پوختەی ئۆفلاین نییە.</strong><p>داتاپاکی JSON لە دوگمەی «داتاپاک» هاوردە بکە؛ دواتر پوختەکان لێرە و لە گەڕانی کتێبەکاندا دەردەکەون.</p></div>}</section>}
